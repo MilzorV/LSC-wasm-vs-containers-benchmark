@@ -1,0 +1,13 @@
+Request path: /index
+Base URL: Some("http://127.0.0.1:8080")
+scripts: registering get_page
+scripts: registering blogs
+Path /content/index.md
+Responded: /index
+Request path: /blog/example
+Base URL: Some("http://127.0.0.1:8080")
+scripts: registering get_page
+scripts: registering blogs
+Path /content/blog/example.md
+Cannot create Cache file
+Responded: /blog/example

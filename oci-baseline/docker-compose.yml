@@ -1,0 +1,10 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8081:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 3

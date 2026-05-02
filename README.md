@@ -6,4 +6,33 @@ Compare **Fermyon Spin + Bartholomew** to an **OCI (nginx)** baseline: cold star
 
 **Scaffold reference** (workloads + scripts you can copy or merge): `../v1/` in the parent `LSC` workspace.
 
-The `spin-bartholomew/` tree is **not** vendored in this repo yet; add it in Week 1 per the plan (Bartholomew site template or copy from `v1`).
+## Run Spin (Wasm)
+
+```bash
+cd spin-bartholomew
+spin up --listen 127.0.0.1:8080
+```
+
+Quick checks:
+
+```bash
+curl -i http://127.0.0.1:8080/
+curl -i http://127.0.0.1:8080/blog/example
+curl -i http://127.0.0.1:8080/static/style.css
+```
+
+## Run OCI baseline (nginx)
+
+```bash
+cd oci-baseline
+docker compose up -d --build
+```
+
+Quick checks:
+
+```bash
+curl -i http://127.0.0.1:8081/
+curl -i http://127.0.0.1:8081/blog/example
+curl -i http://127.0.0.1:8081/static/style.css
+docker compose down
+```

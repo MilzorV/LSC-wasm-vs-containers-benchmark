@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+results/raw/*
+!results/raw/.gitkeep
+!results/raw/*_example.csv
+results/plots/*.png
+results/processed/*.csv
