@@ -31,6 +31,65 @@ This plan implements [requirements.md](requirements.md). Work is organized **by 
 
 **Exit:** Both stacks run locally; scripts produce valid raw CSVs; methodology and environment documented.
 
+### Week 1 working log
+
+Status, gaps, and learnings from implementation so far (keep this updated through Week 1 exit).
+
+#### Done (current checkpoint)
+
+**Repository layout**
+
+- Directories in place: `spin-bartholomew/`, `oci-baseline/`, `benchmarks/`, `results/{raw,processed,plots}/`, `analysis/`, `report/`, `docs/`.
+- Root `.gitignore` matches the `v1` pattern (venv, pycache, generated results/plots where applicable).
+- Empty dirs tracked with `.gitkeep` where needed.
+
+**Wasm workload (Bartholomew on Spin)**
+
+- Bartholomew tree vendored from workspace scaffold `../v1/spin-bartholomew/` (content, templates, `spin.toml`, static assets, Rhai scripts, etc.).
+- Benchmark routes aligned with requirements: `/`, `/blog/example`, `/static/style.css`.
+- **Smoke test (local):** `spin up --listen 127.0.0.1:8080` — all three URLs returned HTTP 200 (Spin 3.6.x).
+
+**OCI baseline**
+
+- nginx image + `docker-compose.yml` (host **8081** → container 80), `default.conf`, and `site/` mirroring the same three paths.
+- **Smoke test:** `docker compose up -d --build` — same three URLs returned HTTP 200.
+
+**Documentation (partial Week 1)**
+
+- [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md): template for host, tool versions, pre-run checklist.
+- [`README.md`](README.md): minimal “run Spin” / “run OCI” + `curl` checks (not yet full prerequisites + benchmark/analysis flow).
+
+#### Still to do for Week 1 exit
+
+Week 1 is complete when *both stacks run*, *scripts emit valid raw CSVs*, and *methodology + environment* are documented (see **Exit** above).
+
+| Item | Notes |
+|------|--------|
+| [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) | Missing: fairness rules, cold-start definition, concurrency grid `10, 50, 100, 200`, repetition counts (e.g. ≥20 cold starts). Port from `../v1/docs/METHODOLOGY.md` and adapt repo name/paths. |
+| `benchmarks/` harness | Currently only placeholders. Need: `common.sh`, `cold_start.sh`, `throughput.sh`, `memory.sh`, `run_all.sh`, `loadgen.py`, env vars (`COLD_RUNS`, `DURATION_SEC`, `CONCURRENCIES`, `MEMORY_SAMPLES`). Port from `../v1/benchmarks/`. |
+| [`README.md`](README.md) | Extend: prerequisites (Spin, Docker, Python), how to run `run_all.sh` / individual scripts, where raw CSVs land, pointer to analysis (once `requirements-analysis.txt` or `pyproject` exists). |
+| **Smoke test (scripts)** | Short dry runs through the harness; confirm CSV headers/schema and no port leaks between Spin (8080) and OCI (8081). |
+| [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md) | Fill in measured rows when you run a real campaign (versions, CPU, RAM, git SHA). |
+| **Equivalence narrative** | OCI README points at methodology; once `METHODOLOGY.md` exists, ensure it states *same paths / comparable workload*, not identical implementation (static HTML vs Bartholomew rendering). |
+
+Optional polish: `spin-bartholomew/README.md` still mentions default port 3000 in places; root README is the source of truth for **8080**.
+
+#### Learnings (so far)
+
+1. **Scaffold reuse worked.** Copying `v1`’s Spin + nginx trees avoided re-deriving URL parity; keep `v1` as reference until benchmarks/analysis are ported.
+
+2. **Spin major version vs stack table.** The table above says Spin 2.x; **Spin 3.6.x** runs this manifest (`spin_version = "1"` in `spin.toml`) without changes. Document “tested with Spin 3.x” in `ENVIRONMENT.md` when recording versions.
+
+3. **One listener per measurement.** Spin and OCI must not both bind 8080/8081 during a single benchmark cell; `common.sh` in `v1` encodes stop/teardown — important when scripting cold starts.
+
+4. **Bartholomew log noise.** A **“Cannot create Cache file”** message appeared on `/blog/example` while still returning 200. Worth watching under load; may be permissions or cache path under `.spin/` — note in methodology/limitations if it persists.
+
+5. **Process lifecycle vs automation.** Stopping Spin with `kill` on the port yields **exit 137** (SIGKILL) for a background `spin up` job — expected when tearing down after smoke tests, not an app crash.
+
+6. **`ENVIRONMENT.md` vs repo reality.** The template includes `pip install -e ".[analysis]"`; this repo does not yet ship a matching `pyproject.toml` / installable package. Either add packaging in Week 1/2 or soften that section until `analysis/` dependencies are defined.
+
+7. **nginx image pin.** Baseline uses `nginx:1.27-alpine` in the Dockerfile; the stack table says `nginx:stable` — both are fine; record the **actual** image tag in `ENVIRONMENT.md` for reproducibility.
+
 ---
 
 ## Week 2 — Full measurement campaign

@@ -2,7 +2,7 @@
 
 Compare **Fermyon Spin + Bartholomew** to an **OCI (nginx)** baseline: cold start, memory, and HTTP throughput. Full specification: [requirements.md](requirements.md).
 
-**Schedule:** [PROJECT_PLAN_3W.md](PROJECT_PLAN_3W.md) (three-week, week-by-week plan).
+**Schedule:** [PROJECT_PLAN_3W.md](PROJECT_PLAN_3W.md) (three-week plan). **Week 1 status & learnings:** [Week 1 working log](PROJECT_PLAN_3W.md#week-1-working-log).
 
 **Scaffold reference** (workloads + scripts you can copy or merge): `../v1/` in the parent `LSC` workspace.
 
