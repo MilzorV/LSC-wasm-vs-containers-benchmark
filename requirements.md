@@ -1,531 +1,308 @@
-# Requirements: WebAssembly Microservices with Spin/wasmtime
+# Wymagania projektu meili-spin
 
-## 1. Original assigned topic
+## Streszczenie wykonawcze
 
-> **11. WebAssembly Microservices with Spin/wasmtime**  
-> Deploy a microservice application using the Spin framework (WASI components) and compare cold-start latency, memory isolation, and throughput against equivalent OCI containers, evaluating Wasm as a practical serverless isolation substrate.
+Celem repozytorium jest zbudowanie **portu typu subset-first** dla Meilisearch uruchamianego jako komponent HTTP w Spin, z naciskiem na zachowanie najbardziej użytecznej części kontraktu HTTP Meilisearch przy świadomym odejściu od jego natywnego modelu uruchomieniowego. Decyzja o wyborze Meilisearch wynika z tego, że projekt jest niemal w całości napisany w Rust, buduje się z użyciem Cargo, ma oficjalny obraz Docker i jest szeroko używany produkcyjnie; jednocześnie jego główny interfejs jest HTTP, co dobrze pasuje do modelu triggerów Spin. Największym technicznym odstępstwem od upstream będą: zastąpienie magazynu LMDB/mmap, ograniczenie ścieżek zależnych od wątków i systemu hosta oraz rehosting API za pomocą adaptera Spin HTTP. citeturn1view0turn13search0turn14view8turn14view1turn5view0turn14view2
 
-This project is part of the **Large Scale Computing 2026** project list. The topic is about checking whether **WebAssembly (Wasm)**, executed with **Spin/wasmtime**, can be a practical alternative to traditional **OCI containers** for serverless-style workloads.
+Projekt standardyzuje toolchain na `wasm32-wasip2`, ponieważ jest to oficjalny target Rust dla WASI Preview 2 / Component Model, a dokumentacja Spin v4 (preview) pokazuje już budowanie komponentów Rust pod ten target. Jednocześnie należy jawnie przypiąć wersję Spin w repozytorium, ponieważ część dokumentacji stabilnej nadal pokazuje starsze przykłady `wasm32-wasi/wasip1`; jest to zatem znane miejsce ryzyka wersyjnego, a nie błąd projektu. citeturn1view1turn24search1
 
----
+## Założenia, cele i zakres
 
-## 2. Chosen concrete project
+**Cel projektu**
 
-### Chosen application: Bartholomew CMS on Spin
+Repozytorium ma dostarczyć działający komponent Spin, który implementuje minimalny, produkcyjnie sensowny podzbiór API Meilisearch dla wyszukiwania dokumentów oraz podstawowej obserwowalności instancji.
 
-The selected application is **Bartholomew CMS**, a ready-made WebAssembly CMS application from Fermyon.
+**Zakres MVP**
 
-Bartholomew is suitable because it is not just a trivial `Hello World` function. It is a real web application that:
+- uruchamianie jako komponent HTTP w Spin;
+- implementacja minimalnych endpointów zgodnych semantycznie z upstream;
+- indeks i wyszukiwanie dla ograniczonego zbioru danych;
+- strategia migracji persystencji: **in-memory → SQLite → external store**;
+- testy różnicowe względem natywnego Meilisearch uruchomionego w Dockerze. citeturn5view0turn14view7turn13search2
 
-- serves dynamic pages,
-- reads Markdown content,
-- uses templates,
-- serves static files,
-- runs as a Spin/WebAssembly application,
-- can be deployed locally with minimal modification.
+**Kryteria sukcesu**
 
-The project will use Bartholomew as the main **Wasm/Spin workload** and compare it against an **equivalent OCI container-based web workload**.
+- komponent buduje się i uruchamia lokalnie przez `spin build` i `spin up`;
+- minimum API działa stabilnie i przechodzi testy integracyjne;
+- dla ustalonego zestawu zapytań wyniki są porównywalne z natywnym Meilisearch;
+- repo zawiera CI, przykładowy `spin.toml`, dokumentację uruchamiania i plan migracji persystencji.
 
----
+**Poza zakresem MVP**
 
-## 3. Simple explanation of the project
+- pełna zgodność z całym API upstream;
+- LMDB, memory-mapped storage i natywne `data.ms`;
+- snapshoty i dumpy zgodne binarnie z upstream;
+- zaawansowane funkcje, takie jak many-index federation, vector/hybrid search, facet search, webhooki zadań, multi-tenancy, tenant tokens i pełne zarządzanie kluczami;
+- próba uruchamiania „oryginalnego demona” bez zmian w Wasm.
 
-The project is a comparison between two ways of running small web services:
+**Założenia niejawne**
 
-1. **WebAssembly with Spin/wasmtime**  
-   The application runs as lightweight Wasm components using the Spin framework.
+- zespół akceptuje **przepisywanie fragmentów w Rust**, jeśli kod upstream nie jest przenośny do Wasm;
+- zespół akceptuje **subset-first scope** zamiast pełnej zgodności od pierwszego wydania;
+- adapter HTTP Spin jest traktowany jako publiczna powłoka serwera, a nie tymczasowy hack.
 
-2. **OCI containers with Docker/Podman**  
-   The equivalent application runs as regular containers, similar to Docker containers used in Kubernetes or cloud platforms.
+## Architektura docelowa
 
-The goal is to answer:
+Architektura musi rozdzielać kod przenośny od kodu zależnego od hosta, ponieważ upstream opiera przechowywanie na LMDB i plikach mapowanych w pamięci, a Spin preferuje model komponentu HTTP i host-managed storage, w tym SQLite oraz konfigurację środowiska wykonywania. Dodatkowo obecne WASI nie dostarcza zwykłego interfejsu socketów dla standardowych bibliotek bazodanowych, stąd potrzeba szczelnego rozdziału warstw. citeturn14view1turn5view2turn26search0turn26search3
 
-> Can WebAssembly be a good serverless isolation substrate compared to containers?
+**Wymagane crate’y**
 
-In simple terms:
+- `crates/core-portable` — parsowanie zapytań, ranking, filtrowanie, modele dokumentów;
+- `crates/storage-traits` — interfejsy magazynu i task queue;
+- `crates/storage-memory` — backend fazy MVP;
+- `crates/storage-sqlite` — backend fazy drugiej;
+- `crates/spin-http-adapter` — mapowanie endpointów HTTP na operacje domenowe;
+- `crates/test-harness` — fixture’y danych i porównania z upstream.
 
-> Is Wasm a fast, safe, and lightweight way to run serverless microservices?
+**Wymagane pliki repozytorium**
 
----
+- [ ] `requirements.md`
+- [ ] `README.md`
+- [ ] `spin.toml`
+- [ ] `runtime-config.toml.example`
+- [ ] `Cargo.toml` w workspace
+- [ ] `rust-toolchain.toml`
+- [ ] `.github/workflows/ci.yml`
+- [ ] `tests/integration/`
+- [ ] `tests/differential/`
+- [ ] `scripts/run-native-meili.sh`
+- [ ] `scripts/bench.sh`
 
-## 4. Project goals
+## Wymagania funkcjonalne
 
-The project must evaluate three main aspects required by the original topic.
+**Minimalny zestaw endpointów wymaganych w MVP**
 
-### 4.1 Cold-start latency
+- `GET /health` — musi zwracać `200` i obiekt statusu zgodny semantycznie z upstream;
+- `GET /version` — musi zwracać informacje o wersji portu i, jeśli dostępne, metadane rewizji;
+- `GET /indexes` — lista indeksów;
+- `POST /indexes/{index_uid}/documents` — dodanie lub pełna zamiana dokumentów; brakujący indeks może zostać utworzony automatycznie;
+- `POST /indexes/{index_uid}/search` — podstawowe wyszukiwanie;
+- `GET /stats` — statystyki instancji i indeksów;
+- `GET /tasks` — lista zadań asynchronicznych lub ich emulacji. citeturn14view3turn14view4turn19search4turn22view1turn22view0turn14view6turn22view2
 
-Measure how long it takes for the application to become ready and serve the first request after it was not running before.
+**Wymagane zachowania**
 
-Examples of measurements:
+- `POST /indexes/{index_uid}/search` musi wspierać co najmniej: `q`, `offset`, `limit`;
+- puste `q` musi działać jako placeholder search;
+- wyszukiwanie powinno zachować semantykę prefix search i typo tolerance tam, gdzie da się ją odtworzyć bez łamania ograniczeń Wasm;
+- `POST /indexes/{index_uid}/documents` musi zwracać obiekt zadania, nawet jeśli implementacja wewnętrzna uprości przetwarzanie;
+- błędy wejściowe mają być zwracane jako JSON z czytelnym kodem i komunikatem;
+- wszystkie trasy poza `/health` mają wymagać autoryzacji Bearer, jeżeli skonfigurowano master key. citeturn22view0turn22view1turn14view5
 
-- time from starting `spin up` to first successful HTTP response,
-- time from starting a Docker container to first successful HTTP response,
-- repeated cold starts to calculate average, minimum, maximum, and p95 latency.
+**Niewymagane w MVP, ale przewidziane w roadmapie**
 
-Expected output:
+- `GET /tasks/{id}`
+- `GET /indexes/{uid}/documents`
+- aktualizacja ustawień indeksu
+- częściowa aktualizacja dokumentów
+- eksport/import na poziomie formatu portu
 
-- table with cold-start times,
-- plot comparing Wasm/Spin and OCI containers,
-- discussion of whether Wasm starts faster.
+## Wymagania niefunkcjonalne i persystencja
 
----
+**Wydajność i pamięć**
 
-### 4.2 Memory isolation and memory overhead
+- budżet pamięci musi być konfigurowalny;
+- implementacja MVP nie może zakładać obecności LMDB ani pamięci mapowanej;
+- projekt ma preferować małe, przewidywalne szczyty pamięci nad maksymalny throughput indeksowania;
+- benchmarki muszą raportować opóźnienia wyszukiwania osobno dla warm i cold start oraz porównanie do natywnego Meilisearch na tym samym zbiorze danych. Upstream wskazuje, że natywne indeksowanie jest operacją wielowątkową i pamięciożerną, a przechowywanie jest zoptymalizowane pod LMDB/mmap; port Spin nie powinien próbować odtwarzać tego 1:1 w MVP. citeturn14view1turn14view2
 
-Compare how much memory each approach uses and how isolation works.
+**Trwałość danych**
 
-Measurements:
+- **Faza A:** brak trwałości, backend in-memory;
+- **Faza B:** trwałość lokalna przez `sqlite_databases = ["default"]`;
+- **Faza C:** zewnętrzny store po HTTPS lub host-managed DB zgodna z runtime. Spin udostępnia wbudowane SQLite oraz runtime configuration do mapowania pliku lub zdalnego libSQL; jednocześnie wsparcie API należy jawnie sprawdzać względem docelowego środowiska. citeturn26search0turn26search3turn23view0
 
-- memory used by the Spin process,
-- memory used by the Wasm application/component,
-- memory used by the Docker container,
-- memory used under low and high request load.
+**Strategia migracji**
 
-Qualitative comparison:
+- dane testowe i fixtures muszą być przenaszalne między backendami;
+- kontrakt `storage-traits` nie może przeciekać szczegółów SQLite;
+- backup w fazie B ma być realizowany na poziomie pliku SQLite lub snapshotu storage hosta, a nie przez natywne dumpy/snapshoty Meilisearch;
+- przy przejściu do external store należy zachować zgodność semantyczną endpointów, nie formatu on-disk upstream. Upstream używa w Dockerze `/meili_data/data.ms` oraz udostępnia dumpy i snapshoty dla własnego storage, co nie jest wymaganiem dla portu subset-first. citeturn14view7
 
-- Wasm isolation through runtime sandboxing and WASI capabilities,
-- container isolation through namespaces, cgroups, filesystem isolation, and container runtime controls,
-- discussion of which model is lighter and which is more mature.
+## Build, narzędzia i CI
 
-Expected output:
+**Wymagania toolchain**
 
-- memory usage table,
-- memory-over-time plot,
-- short security/isolation discussion.
+- Rust z `rustup`;
+- target `wasm32-wasip2`;
+- Spin CLI;
+- szablony Spin dla Rust;
+- wersje narzędzi muszą być przypięte w repo (`rust-toolchain.toml`, README, CI). Target `wasm32-wasip2` generuje komponent i wymaga runtime obsługującego WASI Preview 2 / component model. Dokumentacja Spin v4 preview pokazuje budowanie komponentów Rust pod ten target. citeturn1view1turn24search1turn27view0
 
----
+**Podstawowe komendy**
 
-### 4.3 Throughput
+```bash
+curl -fsSL https://spinframework.dev/downloads/install.sh | bash
+rustup target add wasm32-wasip2
+spin templates install --git https://github.com/spinframework/spin --upgrade
 
-Measure how many HTTP requests per second each implementation can handle.
-
-Measurements:
-
-- requests per second,
-- average latency,
-- p50 latency,
-- p95 latency,
-- p99 latency,
-- error rate.
-
-Benchmark scenarios:
-
-- low concurrency, for example 10 concurrent clients,
-- medium concurrency, for example 50 concurrent clients,
-- high concurrency, for example 100 or 200 concurrent clients,
-- dynamic page route,
-- static asset route.
-
-Expected output:
-
-- throughput table,
-- latency table,
-- throughput-vs-concurrency plot,
-- explanation of performance trade-offs.
-
----
-
-## 5. In-scope work
-
-The project should include the following work.
-
-### 5.1 Deploy the Wasm/Spin application
-
-Use the ready-made Bartholomew CMS template/application.
-
-Required:
-
-- install Spin CLI,
-- run the Bartholomew Spin application locally,
-- verify that the dynamic CMS route works,
-- verify that the static file route works,
-- document how to reproduce the setup.
-
-The Wasm side should include at least two tested routes:
-
-| Route type | Example | Purpose |
-|---|---|---|
-| Dynamic CMS page | `/` or `/blog/example` | Tests request-time rendering |
-| Static file | `/static/style.css` | Tests static file serving |
-
----
-
-### 5.2 Deploy an equivalent OCI container workload
-
-Create an OCI container baseline that serves an equivalent website workload.
-
-Recommended baseline:
-
-- **Nginx or Caddy container** for static files,
-- optionally a simple containerized dynamic Markdown/HTML server if we want a stronger comparison.
-
-Minimum acceptable container baseline:
-
-- same visible website/content,
-- same static files,
-- same benchmarked routes where possible,
-- Dockerfile or Docker Compose file included.
-
-Important note:
-
-The container baseline does not need to run the exact same Wasm binary. It must provide an equivalent web-serving workload so that we can compare Wasm/Spin against traditional OCI deployment.
-
----
-
-### 5.3 Benchmark both systems
-
-Use the same machine and same benchmark tools for both systems.
-
-Required benchmark categories:
-
-1. cold-start latency,
-2. memory usage,
-3. throughput and latency under load.
-
-Each benchmark should be repeated multiple times, for example 10-30 runs, so the results are not based on one lucky measurement.
-
----
-
-### 5.4 Analyze results
-
-The final report must answer:
-
-- Which system starts faster?
-- Which system uses less memory?
-- Which system handles more requests per second?
-- Which system has better tail latency?
-- Is Wasm good enough as a serverless isolation substrate?
-- What are the limitations of this experiment?
-
----
-
-## 6. Out-of-scope work
-
-The project should avoid becoming too large.
-
-Not required:
-
-- building a new CMS from scratch,
-- creating a full production Kubernetes deployment,
-- implementing a custom WebAssembly runtime,
-- writing a new serverless platform,
-- adding authentication, databases, payments, or user accounts,
-- modifying Bartholomew deeply.
-
-The goal is not to invent a new application. The goal is to deploy, benchmark, and evaluate Wasm versus OCI containers.
-
----
-
-## 7. Required stack
-
-### 7.1 WebAssembly / Spin side
-
-Recommended tools:
-
-- **Spin CLI** — to run and manage Spin applications,
-- **wasmtime** — WebAssembly runtime ecosystem used for running Wasm/WASI components,
-- **WASI components** — portable component model/interface layer,
-- **Bartholomew CMS** — ready-made Spin/WebAssembly CMS workload,
-- **Spin static file server** — for serving static files in the Spin application.
-
-Languages likely involved:
-
-- Rust, because Bartholomew is Rust/Wasm-based,
-- TOML, for Spin and site configuration,
-- Markdown, for CMS content,
-- Handlebars/Rhai, if template behavior is inspected or lightly modified.
-
----
-
-### 7.2 OCI container side
-
-Recommended tools:
-
-- **Docker** or **Podman**,
-- **Dockerfile**,
-- **Docker Compose** if multiple containers are used,
-- **Nginx** or **Caddy** as a containerized web server baseline.
-
-Optional:
-
-- a small Node.js/Python/Go HTTP server container if we want a more dynamic baseline than Nginx.
-
----
-
-### 7.3 Benchmarking stack
-
-Recommended tools:
-
-- `hyperfine` — repeated command timing, useful for cold-start benchmarks,
-- `curl` — first-response checks,
-- `wrk`, `hey`, or `bombardier` — HTTP load testing,
-- `docker stats` — container memory and CPU usage,
-- `ps`, `time`, or platform-specific tools — Spin process memory and CPU usage,
-- Python with `pandas` and `matplotlib` — processing CSV results and generating plots.
-
----
-
-### 7.4 Documentation/reporting stack
-
-Recommended:
-
-- Markdown for notes and reproducible commands,
-- CSV files for raw benchmark results,
-- Python notebooks or scripts for plots,
-- final PDF/Markdown report,
-- optional presentation slides.
-
----
-
-## 8. Suggested repository structure
-
-```text
-wasm-spin-vs-oci/
-├── README.md
-├── requirements.md
-├── spin-bartholomew/
-│   ├── spin.toml
-│   ├── content/
-│   ├── templates/
-│   ├── static/
-│   └── ...
-├── oci-baseline/
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── site/
-│   └── nginx.conf
-├── benchmarks/
-│   ├── cold_start.sh
-│   ├── throughput.sh
-│   ├── memory.sh
-│   └── run_all.sh
-├── results/
-│   ├── raw/
-│   ├── processed/
-│   └── plots/
-├── analysis/
-│   └── analyze_results.py
-└── report/
-    ├── report.md
-    └── figures/
+spin new -t http-rust meili-spin
+cargo build --target wasm32-wasip2 --release
+spin build
+spin up
 ```
 
----
+**Przykładowy `spin.toml`**
 
-## 9. Benchmark methodology
+```toml
+spin_manifest_version = 2
 
-### 9.1 General rules
+[application]
+name = "meili-spin"
+version = "0.1.0"
+description = "Subset-first Spin port of Meilisearch"
 
-To keep the comparison fair:
+[variables]
+master_key = { required = false }
+external_store_url = { default = "https://example.invalid" }
 
-- run both systems on the same machine,
-- close unnecessary background applications,
-- use the same HTTP benchmark tool,
-- use the same route types,
-- repeat every benchmark several times,
-- save raw results,
-- report hardware and OS details,
-- separate cold-start tests from warm throughput tests.
+[[trigger.http]]
+route = "/..."
+component = "api"
 
----
+[component.api]
+source = "target/wasm32-wasip2/release/meili_spin.wasm"
+sqlite_databases = ["default"]
+allowed_outbound_hosts = []
+# Po włączeniu external store:
+# allowed_outbound_hosts = ["{{ external_store_url }}"]
 
-### 9.2 Cold-start benchmark
-
-For each system:
-
-1. ensure the service is stopped,
-2. start the service,
-3. send requests until the first `200 OK`,
-4. record elapsed time,
-5. stop the service,
-6. repeat 10-30 times.
-
-Metrics:
-
-- average cold-start time,
-- median cold-start time,
-- p95 cold-start time,
-- minimum and maximum.
-
----
-
-### 9.3 Throughput benchmark
-
-For each system:
-
-1. start the service,
-2. warm it up briefly,
-3. run load tests at different concurrency levels,
-4. record requests per second and latency,
-5. repeat for dynamic and static routes.
-
-Example concurrency levels:
-
-```text
-10, 50, 100, 200
+[component.api.build]
+command = "cargo build --target wasm32-wasip2 --release"
+watch = ["src/**/*.rs", "Cargo.toml"]
 ```
 
-Metrics:
+**Minimalne wymagania CI**
 
-- requests per second,
-- p50 latency,
-- p95 latency,
-- p99 latency,
-- error rate.
+- lint: `cargo fmt --check`, `cargo clippy`;
+- build native i Wasm;
+- testy jednostkowe;
+- testy integracyjne z `spin up`;
+- testy różnicowe z natywnym Meilisearch w Dockerze;
+- artefakty benchmarków w PR.
 
----
+**Przykładowy job CI**
 
-### 9.4 Memory benchmark
+```yaml
+name: ci
 
-For each system:
+on:
+  pull_request:
+  push:
+    branches: [main]
 
-1. measure idle memory usage,
-2. measure memory during low load,
-3. measure memory during high load,
-4. optionally measure memory after the benchmark to detect leaks or retained memory.
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      meili:
+        image: getmeili/meilisearch:vX.Y.Z
+        ports: ["7700:7700"]
+        env:
+          MEILI_MASTER_KEY: MASTER_KEY
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: cargo build --target wasm32-wasip2 --release
+      - run: spin build
+      - run: spin up &
+      - run: cargo test -p differential-tests -- --nocapture
+```
 
-Metrics:
+## Testy i wdrożenie
 
-- idle RSS / memory usage,
-- peak memory usage,
-- average memory during load.
+**Macierz testowa**
 
----
-
-## 10. Expected deliverables
-
-The final project should contain:
-
-1. **Working Wasm/Spin deployment**
-   - Bartholomew CMS runs locally through Spin.
-
-2. **Working OCI container deployment**
-   - Equivalent website workload runs through Docker/Podman.
-
-3. **Benchmark scripts**
-   - cold-start script,
-   - throughput script,
-   - memory measurement script.
-
-4. **Raw benchmark results**
-   - CSV or text files with all measurements.
-
-5. **Processed results and plots**
-   - cold-start comparison,
-   - memory comparison,
-   - throughput comparison,
-   - latency comparison.
-
-6. **Final report**
-   - methodology,
-   - results,
-   - interpretation,
-   - limitations,
-   - conclusion about Wasm as a serverless isolation substrate.
-
-7. **Demo instructions**
-   - commands to run Spin version,
-   - commands to run OCI version,
-   - commands to reproduce benchmarks.
-
----
-
-## 11. Evaluation questions
-
-The final report should explicitly answer these questions.
-
-### Cold start
-
-- Does Spin/Wasm start faster than the container baseline?
-- How large is the difference?
-- Is the difference relevant for serverless workloads?
-
-### Memory
-
-- Does Spin/Wasm use less memory at idle?
-- Does Spin/Wasm use less memory under load?
-- How much memory overhead does each isolation model introduce?
-
-### Throughput
-
-- Which system handles more requests per second?
-- Does Wasm lose throughput compared to containers?
-- Does the result depend on static vs dynamic routes?
-
-### Isolation
-
-- What kind of isolation does Wasm provide?
-- What kind of isolation do containers provide?
-- Is Wasm isolation enough for multi-tenant serverless workloads?
-
-### Practicality
-
-- How easy was setup?
-- How mature is the tooling?
-- What problems were encountered?
-- Would we recommend Wasm/Spin for this kind of serverless workload?
-
----
-
-## 12. Success criteria
-
-The project is successful if:
-
-- Bartholomew CMS runs as a Spin/Wasm application,
-- an equivalent OCI container baseline runs locally,
-- cold-start latency is measured for both,
-- memory usage is measured for both,
-- throughput and latency are measured for both,
-- results are shown in tables and plots,
-- the report gives a clear conclusion about Wasm as a serverless isolation substrate.
-
----
-
-## 13. Suggested division of work for two students
-
-### Student A: Wasm/Spin side
-
-Responsibilities:
-
-- set up Spin,
-- run Bartholomew,
-- document Spin deployment,
-- prepare Wasm benchmark commands,
-- collect Spin/wasmtime memory and throughput results.
-
-### Student B: OCI/container side and analysis
-
-Responsibilities:
-
-- prepare Docker/Podman baseline,
-- document container deployment,
-- prepare container benchmark commands,
-- collect container memory and throughput results,
-- process results and create plots.
-
-Shared responsibilities:
-
-- define fair benchmark methodology,
-- write final report,
-- prepare final presentation/demo,
-- interpret whether Wasm is practical for serverless isolation.
-
----
-
-## 14. Main risks and mitigations
-
-| Risk | Why it matters | Mitigation |
+| Środowisko | Cel | Minimalny zestaw |
 |---|---|---|
-| Bartholomew is not identical to the OCI baseline | Comparison may be criticized | Clearly describe the OCI workload as equivalent, not identical |
-| Cold-start measurement is noisy | Results may vary | Repeat many times and report median/p95 |
-| Wasm memory measurement may be harder than Docker memory measurement | Docker has built-in `docker stats` | Use OS process tools for Spin and document method |
-| Nginx may be too optimized compared to Bartholomew | Throughput comparison may be unfair | Benchmark dynamic and static routes separately |
-| Project becomes too big | Limited time | Do not build new app features; focus on deployment and measurement |
+| Lokalnie | szybka iteracja | unit + `spin up` + smoke tests |
+| CI | regresje | lint + unit + wasm build + integration + differential |
+| Kubernetes | wdrożenie referencyjne | smoke + persistence checks + restart recovery |
 
----
+**Wymagane rodzaje testów**
 
-## 15. Final conclusion target
+- **unit** — parser zapytań, ranking, mapowanie błędów;
+- **integration** — realne wywołania HTTP do komponentu Spin;
+- **differential** — te same requesty do lokalnego portu i do natywnego Meilisearch w Dockerze;
+- **performance** — powtarzalny zestaw zapytań na ustalonym fixture;
+- **persistence** — restart komponentu i weryfikacja danych dla backendu SQLite;
+- **compatibility** — walidacja używanych API Spin względem docelowego środowiska przez `application.targets` po przypięciu runtime. citeturn23view0turn28view0turn13search2
 
-The final project should be able to conclude something like:
+**Komenda referencyjna do testów różnicowych**
 
-> WebAssembly with Spin/wasmtime provides a lightweight and fast-starting execution model for serverless-style microservices. Compared with OCI containers, it may reduce cold-start latency and memory overhead, but the practical result depends on workload type, runtime maturity, tooling, and how equivalent the container baseline is. For short-lived HTTP microservices, Wasm is a promising serverless isolation substrate, but containers remain more mature and broadly supported.
+```bash
+docker run -it --rm \
+  -p 7700:7700 \
+  -e MEILI_MASTER_KEY='MASTER_KEY' \
+  -v $(pwd)/meili_data:/meili_data \
+  getmeili/meilisearch:vX.Y.Z
+```
+
+**Uwagi wdrożeniowe**
+
+Spin może działać bezpośrednio z CLI, ale ten tryb nie zapewnia recovery/failover. Dla wdrożeń klastrowych należy preferować SpinKube. citeturn28view0
+
+## Bezpieczeństwo, operacje i roadmapa
+
+**Wymagania bezpieczeństwa**
+
+- brak outbound HTTP w MVP, chyba że włączono external store;
+- `allowed_outbound_hosts` musi być jawnie zawężone; wildcard jest dopuszczalny tylko lokalnie;
+- sekrety nie mogą być trzymane w repo; należy użyć zmiennych Spin oraz providerów runtime;
+- master key ma być dostarczany przez `SPIN_VARIABLE_*`, `.env` lokalnie lub Vault/Azure Key Vault w środowiskach wyższych. citeturn25search2turn5view3turn5view4
+
+**Wymagania operacyjne**
+
+- logi strukturalne JSON;
+- metryki minimum: liczba requestów, błędy, czas wyszukiwania, liczba dokumentów, liczba zadań;
+- backupy: plik SQLite lub snapshot storage hosta; brak zależności od dumpów upstream;
+- restart musi zachowywać stan od fazy SQLite wzwyż.
+
+**Workflow deweloperski i wkład**
+
+- każdy PR musi aktualizować testy i dokumentację, jeśli zmienia kontrakt API;
+- duże zmiany architektoniczne wymagają ADR lub issue design;
+- minimalny standard przed PR: `fmt`, `clippy`, `test`, `spin build`;
+- commity zalecane w stylu Conventional Commits.
+
+**Roadmapa**
+
+```mermaid
+gantt
+    title Plan etapów meili-spin
+    dateFormat  YYYY-MM-DD
+    section Fundament
+    Scaffold repo i toolchain        :a1, 2026-05-05, 7d
+    Wydzielenie core i traitów       :a2, after a1, 10d
+    section MVP
+    Backend in-memory                :b1, after a2, 7d
+    Adapter HTTP Spin                :b2, after b1, 10d
+    Testy różnicowe vs native        :b3, after b2, 7d
+    section Trwałość
+    Backend SQLite                   :c1, after b3, 10d
+    Testy restart/backup             :c2, after c1, 5d
+    section Produkcja
+    External store                   :d1, after c2, 14d
+    Wdrożenie na SpinKube            :d2, after d1, 7d
+```
+
+### Pytania otwarte
+
+- Jaką wersję Spin przypiąć jako oficjalnie wspieraną, biorąc pod uwagę przejście z przykładów `wasip1` do `wasip2`?
+- Które crate’y upstream Meilisearch kompilują się do `wasm32-wasip2` bez zmian feature-flag?
+- Czy task queue ma być prawdziwie asynchroniczna, czy wystarczy „task façade” nad wykonaniem synchronicznym?
+- Jaki external store ma być docelowym systemem zapisu: libSQL po HTTPS czy własna usługa indeksu?
+
+### Źródła podstawowe
+
+- dokumentacja instalacji, manifestów, triggerów HTTP, zmiennych, SQLite, deploymentu i zgodności API w Spin; citeturn27view0turn5view0turn5view3turn26search0turn28view0turn23view0
+- dokumentacja Rust dla targetu `wasm32-wasip2`; citeturn1view1
+- repozytorium, dokumentacja i instrukcje budowania Meilisearch; citeturn1view0turn15view0turn15view1
+- dokumentacja API Meilisearch dla `health`, `version`, `documents`, `search`, `stats`, `tasks`; citeturn14view3turn14view4turn22view1turn22view0turn14view6turn22view2
+- dokumentacja Docker Meilisearch i oficjalny obraz; citeturn14view7turn13search0
+- oficjalne przykłady użycia produkcyjnego Meilisearch. citeturn14view8
