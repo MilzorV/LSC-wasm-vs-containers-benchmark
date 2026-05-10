@@ -34,7 +34,7 @@ The final report must answer:
 ### In scope
 
 - A Rust-based Spin HTTP component targeting `wasm32-wasip2`.
-- An in-memory implementation of a minimal Meilisearch-compatible search API.
+- A minimal Meilisearch-compatible search API that keeps request logic in memory and snapshots state through Spin's default key-value store for local smoke-test continuity.
 - A pinned official Meilisearch OCI baseline using Docker or Podman.
 - Reproducible benchmark scripts for cold start, memory, throughput, and latency.
 - Raw CSV results, processed summaries, plots, and a final written interpretation.
@@ -154,7 +154,7 @@ Recommended workspace layout:
 Recommended crate responsibilities:
 
 - `core`: request/response models, indexing, tokenization, ranking, pagination, and stats.
-- `storage-memory`: in-memory index and task storage for the MVP.
+- `storage-memory`: portable in-memory index and task model for tests and benchmark logic.
 - `spin-http-adapter`: Spin HTTP trigger integration, routing, auth hook if used, and JSON error mapping.
 
 The MVP must not depend on LMDB, mmap, background threads, host filesystem persistence, or native Meilisearch storage internals.
@@ -348,7 +348,7 @@ The final report must explicitly state:
 - the Spin service is a subset implementation, not Meilisearch itself;
 - API-level equivalence is limited to selected endpoints and selected request shapes;
 - ranking behavior may differ from native Meilisearch;
-- the Spin MVP uses in-memory storage and resets state between cold starts unless the benchmark script reloads fixtures;
+- the Spin MVP uses a local Spin key-value snapshot for request-to-request continuity and benchmark scripts must clear it when a clean cold-start state is required;
 - memory measurements for Spin and OCI are collected through different runtime mechanisms;
 - results from a local benchmark do not automatically generalize to a production serverless platform.
 

@@ -56,6 +56,8 @@ The Spin MVP implements:
 - `GET /stats`
 - `GET /tasks`
 
+The Spin runtime stores the Week 1 service state in `spin-meili/.spin/sqlite_key_value.db` through the default key-value store. Remove that file before a run when you need a clean fixture load.
+
 ## Run the OCI baseline
 
 ```bash

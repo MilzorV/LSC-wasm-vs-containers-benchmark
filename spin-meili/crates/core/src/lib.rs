@@ -91,7 +91,7 @@ pub struct SearchResponse {
     pub estimated_total_hits: usize,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Task {
     pub task_uid: u64,
@@ -102,7 +102,7 @@ pub struct Task {
     pub details: TaskDetails,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskDetails {
     pub received_documents: usize,
@@ -133,7 +133,7 @@ pub struct IndexStats {
     pub is_indexing: bool,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct SearchEngine {
     indexes: BTreeMap<String, Index>,
     tasks: Vec<Task>,
@@ -266,7 +266,7 @@ impl SearchEngine {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Index {
     uid: String,
     primary_key: String,
@@ -328,12 +328,7 @@ impl Index {
                 .collect::<Vec<_>>()
         };
 
-        matches.sort_by(|left, right| {
-            right
-                .1
-                .cmp(&left.1)
-                .then_with(|| left.0.cmp(&right.0))
-        });
+        matches.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.cmp(&right.0)));
 
         let estimated_total_hits = matches.len();
         let hits = matches

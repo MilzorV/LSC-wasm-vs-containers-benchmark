@@ -6,7 +6,7 @@ This plan implements [requirements.md](requirements.md). Work is organized by we
 
 | Layer | Choices |
 |---|---|
-| Wasm workload | Rust Spin HTTP component targeting `wasm32-wasip2`; subset-first Meilisearch-compatible API; in-memory storage for the MVP |
+| Wasm workload | Rust Spin HTTP component targeting `wasm32-wasip2`; subset-first Meilisearch-compatible API; in-memory engine with Spin default key-value snapshots for request-to-request state |
 | Runtime | Spin CLI pinned in docs; wasmtime through Spin |
 | OCI baseline | Docker or Podman; Docker Compose; pinned official `getmeili/meilisearch:<version>` image |
 | Benchmark surface | `GET /health`, document ingestion, `POST /indexes/{uid}/search` with non-empty query and empty placeholder search |
@@ -38,7 +38,7 @@ This plan implements [requirements.md](requirements.md). Work is organized by we
 `-- report/
 ```
 
-The exact internal Rust crate layout can be adjusted while implementing, but the service should keep search logic, in-memory storage, and Spin HTTP adapter code separated.
+The exact internal Rust crate layout can be adjusted while implementing, but the service should keep search logic, state storage, and Spin HTTP adapter code separated.
 
 ## Week 1 - Workloads, API surface, and smoke tests
 
@@ -55,11 +55,12 @@ The exact internal Rust crate layout can be adjusted while implementing, but the
   - `POST /indexes/{uid}/search`;
   - `GET /stats`;
   - `GET /tasks`.
-- Implement in-memory storage only:
+- Implement MVP storage:
   - index metadata;
   - document storage keyed by documented primary key;
   - simple deterministic token/search behavior;
   - synchronous Meilisearch-like task facade for ingestion.
+  - Spin default key-value snapshotting so data loaded by one request is visible to later search requests.
 - Add JSON error responses with stable codes and clear messages.
 - Add fixture data in `fixtures/` and document the schema, primary key, and example queries.
 - Add OCI baseline under `oci-meilisearch/`:
@@ -138,7 +139,7 @@ The exact internal Rust crate layout can be adjusted while implementing, but the
 - Make the limitations explicit:
   - Spin service is a Meilisearch-compatible subset, not native Meilisearch;
   - ranking behavior may differ;
-  - in-memory Spin storage resets between runs;
+  - local Spin key-value state must be cleared for clean cold-start runs;
   - Spin and OCI memory are observed through different mechanisms;
   - local results are not a full production-platform benchmark.
 - Reproducibility QA:

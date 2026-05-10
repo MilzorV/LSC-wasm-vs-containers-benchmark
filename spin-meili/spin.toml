@@ -15,6 +15,7 @@ component = "api"
 [component.api]
 source = "target/wasm32-wasip2/release/spin_http_adapter.wasm"
 allowed_outbound_hosts = []
+key_value_stores = ["default"]
 
 [component.api.build]
 command = "cargo build --target wasm32-wasip2 --release -p spin-http-adapter"

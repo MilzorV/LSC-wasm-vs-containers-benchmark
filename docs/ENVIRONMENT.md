@@ -9,7 +9,8 @@ This file captures the local tool versions observed when the Week 1 scaffold was
 | Hostname | Miloszs-MacBook-Air.local |
 | CPU | Not captured in sandbox (`sysctl` denied) |
 | RAM | Not captured in sandbox (`sysctl` denied) |
-| Rust | Not installed in the current shell (`rustc`, `cargo`, `rustup` missing) |
+| Rust | `rustc 1.95.0 (59807616e 2026-04-14)` |
+| Installed Rust targets | `aarch64-apple-darwin`, `wasm32-wasip1`, `wasm32-wasip2` |
 | Spin | `spin 3.6.3 (88d51cf 2026-04-09)` |
 | Docker | `Docker version 28.5.1, build e180ab8` |
 | Docker Compose | `Docker Compose version v2.40.2-desktop.1` |
@@ -22,5 +23,4 @@ Before Week 2 benchmark collection, update this file with:
 - exact CPU model and core count;
 - RAM;
 - power/performance mode;
-- Rust version after installation;
 - Git commit SHA of the benchmarked code.

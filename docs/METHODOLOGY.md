@@ -20,7 +20,7 @@ The shared fixture is `fixtures/documents.json`.
 - Fields: `id`, `title`, `overview`, `genre`, `year`
 - Smoke query: `space`
 
-The Spin MVP stores documents in process-local memory. Restarting the Spin service may clear indexed documents, so smoke scripts always load the fixture before searching.
+The Spin MVP keeps its search engine in memory while handling a request and snapshots that state into Spin's default key-value store between requests. With the local Spin runtime this appears under `spin-meili/.spin/sqlite_key_value.db`, so smoke scripts always load the fixture before searching and benchmark scripts should remove that file when they need a clean cold-start state.
 
 ## API surface
 
