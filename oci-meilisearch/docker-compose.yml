@@ -1,0 +1,14 @@
+services:
+  meilisearch:
+    image: getmeili/meilisearch:v1.43.0
+    container_name: lsc-meilisearch-oci
+    environment:
+      MEILI_MASTER_KEY: MASTER_KEY
+      MEILI_ENV: development
+    ports:
+      - "127.0.0.1:8081:7700"
+    volumes:
+      - meili_data:/meili_data
+
+volumes:
+  meili_data:

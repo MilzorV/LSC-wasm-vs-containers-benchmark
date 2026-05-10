@@ -1,0 +1,21 @@
+#:schema https://schemas.spinframework.dev/spin/manifest-v2/latest.json
+
+spin_manifest_version = 2
+
+[application]
+name = "meili-spin-subset"
+version = "0.1.0"
+authors = ["Milosz Slowinski <slowinski.milosz@gmail.com>"]
+description = "Meilisearch-compatible subset benchmark service for Spin/wasmtime."
+
+[[trigger.http]]
+route = "/..."
+component = "api"
+
+[component.api]
+source = "target/wasm32-wasip2/release/spin_http_adapter.wasm"
+allowed_outbound_hosts = []
+
+[component.api.build]
+command = "cargo build --target wasm32-wasip2 --release -p spin-http-adapter"
+watch = ["Cargo.toml", "crates/**/*.rs"]

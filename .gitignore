@@ -1,0 +1,5 @@
+.DS_Store
+.env
+target/
+spin-meili/target/
+meili_data/
