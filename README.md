@@ -1,9 +1,9 @@
-# LSC — Wasm/Spin vs OCI containers benchmark
+# LSC - Meilisearch-compatible Spin/wasmtime vs OCI benchmark
 
-Compare **Fermyon Spin + Bartholomew** to an **OCI (nginx)** baseline: cold start, memory, and HTTP throughput. Full specification: [requirements.md](requirements.md).
+Compare a **subset-first Meilisearch-compatible HTTP microservice** running on **Fermyon Spin/wasmtime** against the official **Meilisearch OCI container**. The project measures cold-start latency, memory isolation/overhead, and HTTP throughput to evaluate Wasm as a practical serverless isolation substrate.
 
-**Schedule:** [PROJECT_PLAN_3W.md](PROJECT_PLAN_3W.md) (three-week, week-by-week plan).
+Full specification: [requirements.md](requirements.md).
 
-**Scaffold reference** (workloads + scripts you can copy or merge): `../v1/` in the parent `LSC` workspace.
+Three-week schedule: [PROJECT_PLAN_3W.md](PROJECT_PLAN_3W.md).
 
-The `spin-bartholomew/` tree is **not** vendored in this repo yet; add it in Week 1 per the plan (Bartholomew site template or copy from `v1`).
+The implementation trees are not scaffolded yet. Week 1 of the plan adds the Spin service under `spin-meili/`, the OCI baseline under `oci-meilisearch/`, fixtures, benchmark scripts, analysis, and report folders.
