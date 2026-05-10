@@ -2,4 +2,5 @@
 .env
 target/
 spin-meili/target/
+spin-meili/.spin/
 meili_data/
