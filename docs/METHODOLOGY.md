@@ -6,7 +6,7 @@ The project now separates **porting feasibility** from **runtime benchmarking**.
 
 | System | URL | Purpose |
 |---|---|---|
-| Spin/wasmtime | `http://127.0.0.1:8080` | Wasm implementation under test; currently backed by the legacy subset fallback until upstream reuse is resolved |
+| Spin/wasmtime | `http://127.0.0.1:8080` | Wasm implementation under test; serves the same mini-dashboard as OCI and currently backs it with the legacy subset fallback |
 | OCI Meilisearch | `http://127.0.0.1:8081` | Official native baseline, `getmeili/meilisearch:v1.43.0` |
 
 The goal is to move as much Spin behavior as possible onto upstream Meilisearch `v1.43.0` source. If that is blocked, the report must state the exact blocker and label any fallback benchmark results accordingly.
@@ -51,6 +51,12 @@ The shared fixture is `fixtures/documents.json`.
 
 The OCI baseline uses native Meilisearch task processing. The current Spin fallback stores state through Spin's default key-value store under `spin-meili/.spin/sqlite_key_value.db`.
 
+Both dashboards use the same demo API key:
+
+```text
+MASTER_KEY
+```
+
 ## Benchmark API surface
 
 The benchmark surface is intentionally narrow:
@@ -62,6 +68,17 @@ The benchmark surface is intentionally narrow:
 - `POST /indexes/{uid}/search`
 - `GET /stats`
 - `GET /tasks`
+
+For browser mirror testing, Spin also implements dashboard-compatible document browsing and settings routes:
+
+- `GET /`
+- `GET /assets/index-dDwzADMz.js`
+- `GET /indexes/{uid}`
+- `GET /indexes/{uid}/documents`
+- `POST /indexes/{uid}/documents/fetch`
+- `GET /indexes/{uid}/stats`
+- `GET /indexes/{uid}/settings`
+- `PATCH /indexes/{uid}/settings`
 
 Benchmark scripts should use the same fixture, index UID, primary key, and search request JSON for both systems. If Spin cannot exactly match native Meilisearch response fields, scripts should validate stable comparable fields such as hit IDs, hit count, status, and error rate.
 
@@ -81,6 +98,14 @@ From another shell:
 benchmarks/smoke_spin.sh
 ```
 
+Browser mirror:
+
+```text
+http://127.0.0.1:8080/
+```
+
+Enter `MASTER_KEY`, then browse the `movies` index and search for `space`.
+
 OCI:
 
 ```bash
@@ -92,6 +117,12 @@ From the repository root:
 
 ```bash
 benchmarks/smoke_oci.sh
+```
+
+Native browser baseline:
+
+```text
+http://127.0.0.1:8081/
 ```
 
 Reset OCI state:

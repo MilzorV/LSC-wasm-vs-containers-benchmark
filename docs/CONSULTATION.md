@@ -33,6 +33,10 @@ The project has pivoted from a custom Meilisearch-compatible subset to an attemp
 - Fetched upstream Meilisearch `v1.43.0` into `vendor/meilisearch/`.
 - Ran a native upstream check for package `meilisearch`; it succeeds.
 - Ran layered `wasm32-wasip2` checks; small crates pass, but `milli` and higher layers currently fail.
+- Added browser-level mirror work:
+  - Spin serves the same pinned Meilisearch mini-dashboard assets as OCI;
+  - Spin and OCI both use `MASTER_KEY`;
+  - Spin now implements dashboard-compatible document browsing, index stats, and settings routes for the selected benchmark surface.
 
 ## Current technical evidence
 
@@ -69,11 +73,13 @@ docs/upstream-wasi-blockers.md
 
 ## Current benchmark surface
 
-We still plan to compare:
+We now compare the same browser entrypoint plus the same benchmark API surface:
 
+- browser dashboard at `/` on both Spin and OCI;
 - cold start to first successful `/health`;
 - search throughput for `POST /indexes/movies/search` with `{"q":"space"}`;
 - placeholder search throughput for `POST /indexes/movies/search` with `{"q":""}`;
+- document browsing via `GET /indexes/movies/documents`;
 - memory at idle and under load;
 - latency percentiles p50, p95, p99;
 - error rate under concurrency.
@@ -87,7 +93,7 @@ Planned concurrency levels:
 ## Important limitations
 
 - Full unmodified Meilisearch does not currently compile for `wasm32-wasip2` in our first feasibility check.
-- The current Spin service is still the legacy subset fallback, not the upstream daemon.
+- The current Spin service serves the same mini-dashboard, but its backend logic is still the legacy subset fallback, not the upstream daemon.
 - If we replace LMDB/mmap storage with a WASI-compatible layer, that must be treated as a porting deviation.
 - Only a full or partial upstream reuse tier can support a same-source comparison.
 - If we fall back to the subset, the result is still useful for Wasm-vs-container benchmarking, but not a same-application benchmark.
@@ -102,13 +108,15 @@ Planned concurrency levels:
 
 4. Should the final comparison require same binary/application behavior, or is same API surface plus documented porting deviations acceptable?
 
-5. Should cold start measure only first `/health`, or should it include fixture load and first successful search?
+5. Is browser-level parity with the same mini-dashboard and selected API workflows enough for the project, given the upstream daemon cannot currently compile to WASI?
 
-6. How large should the benchmark fixture be for the final run?
+6. Should cold start measure only first `/health`, or should it include fixture load and first successful search?
 
-7. What level of memory isolation discussion is expected: conceptual WASI/container comparison, measured overhead, or both?
+7. How large should the benchmark fixture be for the final run?
 
-8. What final deliverable format is preferred: Markdown report, PDF, presentation slides, or all of these?
+8. What level of memory isolation discussion is expected: conceptual WASI/container comparison, measured overhead, or both?
+
+9. What final deliverable format is preferred: Markdown report, PDF, presentation slides, or all of these?
 
 ## Suggested next steps after consultation
 

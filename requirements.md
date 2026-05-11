@@ -52,6 +52,7 @@ The repository must include scripts that fetch or verify the pinned upstream sou
 - Layered WASI feasibility checks for selected upstream crates.
 - A Spin HTTP adapter under `spin-meili/crates/spin-http-adapter`.
 - A compatibility crate under `spin-meili/crates/meili-wasi-compat` for documenting and isolating WASI-specific deviations.
+- The same pinned Meilisearch mini-dashboard served by Spin and the OCI baseline for browser-level demo parity.
 - Reuse of upstream Meilisearch code wherever it compiles cleanly or can be adapted with narrowly scoped shims.
 - A legacy subset Spin implementation retained only as a fallback/reference path while the upstream port boundary is explored.
 - The official Meilisearch OCI container as the native baseline.
@@ -92,6 +93,8 @@ The benchmark remains intentionally narrow so both runtimes can be compared on t
 | `POST /indexes/{uid}/search` | Run search and placeholder search. |
 | `GET /stats` | Report document/index counts. |
 | `GET /tasks` | Report ingestion task state. |
+
+For browser mirror demos, Spin must also serve the pinned mini-dashboard at `/` and implement the document browsing, index stats, and settings routes the dashboard uses for the selected `movies` workflow.
 
 The shared fixture uses:
 

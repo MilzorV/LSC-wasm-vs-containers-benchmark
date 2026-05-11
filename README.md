@@ -15,7 +15,7 @@ Three-week schedule: [PROJECT_PLAN_3W.md](PROJECT_PLAN_3W.md).
 - Observed upstream commit: `475ed56e5612df0dbb826748add5f93e0e7d5500`.
 - Native upstream check: passes for package `meilisearch`.
 - WASI layered check: small crates pass, `milli` and higher layers currently fail; see [docs/upstream-wasi-blockers.md](docs/upstream-wasi-blockers.md).
-- Spin service: still builds and runs through the renamed legacy subset fallback.
+- Spin service: serves the same pinned Meilisearch mini-dashboard as OCI and runs the benchmark API through the renamed legacy subset fallback.
 
 ## Prerequisites
 
@@ -64,12 +64,24 @@ Per-package logs are ignored by Git because they are large and machine-specific.
 
 ## Run the Spin service
 
-The current Spin app is the legacy subset fallback while the upstream port is investigated.
+The current Spin app serves the pinned Meilisearch mini-dashboard and protects API routes with the same demo key as OCI: `MASTER_KEY`.
 
 ```bash
 cd spin-meili
 spin build
 spin up --listen 127.0.0.1:8080
+```
+
+Open the dashboard in a browser:
+
+```text
+http://127.0.0.1:8080/
+```
+
+When the dashboard asks for an API key, enter:
+
+```text
+MASTER_KEY
 ```
 
 From another shell:
@@ -78,13 +90,18 @@ From another shell:
 benchmarks/smoke_spin.sh
 ```
 
-The fallback service exposes the benchmark API surface:
+The fallback service exposes the browser and benchmark API surface:
 
 - `GET /health`
 - `GET /version`
 - `GET /indexes`
+- `POST /indexes`
+- `GET /indexes/{uid}`
 - `POST /indexes/{uid}/documents`
+- `GET /indexes/{uid}/documents`
+- `POST /indexes/{uid}/documents/fetch`
 - `POST /indexes/{uid}/search`
+- `GET /indexes/{uid}/settings`
 - `GET /stats`
 - `GET /tasks`
 
@@ -111,6 +128,12 @@ docker compose down -v
 ```
 
 The OCI baseline uses `MEILI_MASTER_KEY=MASTER_KEY` and listens on `127.0.0.1:8081`.
+
+Open the native Meilisearch dashboard for comparison:
+
+```text
+http://127.0.0.1:8081/
+```
 
 ## Shared fixture
 

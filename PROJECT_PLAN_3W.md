@@ -9,6 +9,7 @@ This plan implements [requirements.md](requirements.md). The project now priorit
 | Upstream source | `meilisearch/meilisearch` tag `v1.43.0`, fetched into `vendor/meilisearch/` by script |
 | OCI baseline | Official `getmeili/meilisearch:v1.43.0` through Docker Compose |
 | Spin workload | Rust Spin HTTP component targeting `wasm32-wasip2` |
+| Browser surface | Pinned Meilisearch mini-dashboard `v0.4.1` served from both Spin and OCI |
 | Porting workspace | `spin-meili/crates/spin-http-adapter`, `spin-meili/crates/meili-wasi-compat`, and legacy subset crates as fallback/reference only |
 | Runtime | Spin CLI `3.6.3`; wasmtime through Spin |
 | Native checks | Upstream cargo check on host using Meilisearch's pinned Rust toolchain |
@@ -80,6 +81,10 @@ This plan implements [requirements.md](requirements.md). The project now priorit
 - Maintain smoke parity:
   - Spin `/health`, fixture load, and `space` search;
   - OCI `/health`, fixture load with Bearer auth, task wait, and `space` search.
+- Maintain browser parity:
+  - Spin serves the same mini-dashboard as OCI at `/`;
+  - both systems use `MASTER_KEY`;
+  - dashboard document browsing and search work for the shared `movies` fixture.
 
 **Exit:** upstream source is pinned, native check succeeds, WASI blocker evidence is documented, OCI smoke works, and the Spin fallback remains usable while the upstream port boundary is investigated.
 

@@ -17,6 +17,12 @@ source = "target/wasm32-wasip2/release/spin_http_adapter.wasm"
 allowed_outbound_hosts = []
 key_value_stores = ["default"]
 
+[variables]
+meili_master_key = { default = "MASTER_KEY" }
+
+[component.api.variables]
+meili_master_key = "{{ meili_master_key }}"
+
 [component.api.build]
 command = "cargo build --target wasm32-wasip2 --release -p spin-http-adapter"
-watch = ["Cargo.toml", "crates/**/*.rs"]
+watch = ["Cargo.toml", "crates/**/*.rs", "static/mini-dashboard/**/*"]
