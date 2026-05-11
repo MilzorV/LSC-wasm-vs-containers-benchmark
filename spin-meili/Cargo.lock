@@ -449,7 +449,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "meili-spin-core"
+name = "meili-spin-legacy-subset-core"
 version = "0.1.0"
 dependencies = [
  "serde",
@@ -460,7 +460,15 @@ dependencies = [
 name = "meili-spin-storage-memory"
 version = "0.1.0"
 dependencies = [
- "meili-spin-core",
+ "meili-spin-legacy-subset-core",
+]
+
+[[package]]
+name = "meili-wasi-compat"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -720,7 +728,7 @@ name = "spin-http-adapter"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "meili-spin-core",
+ "meili-spin-legacy-subset-core",
  "meili-spin-storage-memory",
  "serde",
  "serde_json",

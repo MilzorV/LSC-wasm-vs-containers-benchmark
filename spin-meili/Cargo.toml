@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/core",
+    "crates/legacy-subset-core",
+    "crates/meili-wasi-compat",
     "crates/storage-memory",
     "crates/spin-http-adapter",
 ]
@@ -15,7 +16,8 @@ license = "MIT"
 
 [workspace.dependencies]
 anyhow = "1"
-meili-spin-core = { path = "crates/core" }
+meili-spin-legacy-subset-core = { path = "crates/legacy-subset-core" }
+meili-wasi-compat = { path = "crates/meili-wasi-compat" }
 meili-spin-storage-memory = { path = "crates/storage-memory" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

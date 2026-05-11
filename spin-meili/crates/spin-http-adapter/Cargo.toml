@@ -1,6 +1,6 @@
 [package]
 name = "spin-http-adapter"
-description = "Spin HTTP adapter for the Meilisearch-compatible benchmark service."
+description = "Spin HTTP adapter for the Meilisearch porting benchmark service."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyhow.workspace = true
-meili-spin-core.workspace = true
+meili-spin-legacy-subset-core.workspace = true
 meili-spin-storage-memory.workspace = true
 serde.workspace = true
 serde_json.workspace = true

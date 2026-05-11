@@ -8,4 +8,4 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
-meili-spin-core.workspace = true
+meili-spin-legacy-subset-core.workspace = true

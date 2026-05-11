@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use meili_spin_core::SearchEngine;
+use meili_spin_legacy_subset_core::SearchEngine;
 
 thread_local! {
     static ENGINE: RefCell<SearchEngine> = RefCell::new(SearchEngine::new());

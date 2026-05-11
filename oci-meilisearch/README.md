@@ -8,6 +8,15 @@ Pinned image:
 getmeili/meilisearch:v1.43.0
 ```
 
+This image tag intentionally matches the upstream source fetched by `scripts/fetch-meilisearch.sh`:
+
+```text
+meilisearch/meilisearch tag v1.43.0
+observed commit 475ed56e5612df0dbb826748add5f93e0e7d5500
+```
+
+The OCI service is the native reference implementation. The Spin side must either reuse the same pinned source where possible or document any porting deviation.
+
 Start the baseline:
 
 ```bash

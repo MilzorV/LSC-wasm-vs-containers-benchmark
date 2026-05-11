@@ -4,3 +4,7 @@ target/
 spin-meili/target/
 spin-meili/.spin/
 meili_data/
+vendor/meilisearch/
+docs/upstream-native-check.log
+docs/upstream-wasi-check.log
+docs/upstream-wasi-check-*.log

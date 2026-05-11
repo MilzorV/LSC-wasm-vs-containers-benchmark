@@ -160,7 +160,7 @@ impl SearchEngine {
             pkg_version: env!("CARGO_PKG_VERSION"),
             commit_sha: option_env!("GIT_COMMIT_SHA"),
             build_date: option_env!("BUILD_DATE"),
-            engine: "meili-spin-subset",
+            engine: "meili-spin-legacy-subset",
         }
     }
 

@@ -3,10 +3,10 @@
 spin_manifest_version = 2
 
 [application]
-name = "meili-spin-subset"
+name = "meili-spin-port"
 version = "0.1.0"
 authors = ["Milosz Slowinski <slowinski.milosz@gmail.com>"]
-description = "Meilisearch-compatible subset benchmark service for Spin/wasmtime."
+description = "Spin/wasmtime Meilisearch porting adapter with a legacy subset fallback."
 
 [[trigger.http]]
 route = "/..."

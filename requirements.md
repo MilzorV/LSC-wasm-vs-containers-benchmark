@@ -1,4 +1,4 @@
-# Requirements: Meilisearch-Compatible Microservice on Spin/wasmtime vs OCI
+# Requirements: Upstream Meilisearch on Spin/wasmtime vs OCI
 
 ## 1. Assigned topic
 
@@ -6,361 +6,169 @@
 >
 > Deploy a microservice application using the Spin framework (WASI components) and compare cold-start latency, memory isolation, and throughput against equivalent OCI containers, evaluating Wasm as a practical serverless isolation substrate.
 
-This project evaluates whether a WebAssembly service running through **Spin/wasmtime** can be a practical alternative to an equivalent **OCI container** workload for serverless-style microservices.
+This project evaluates whether a Meilisearch-style HTTP microservice can run as a WebAssembly component through **Spin/wasmtime**, and how that compares with an equivalent **OCI container** deployment.
 
-## 2. Concrete project
+## 2. Updated project goal
 
-The project will build and benchmark a **subset-first Meilisearch-compatible HTTP microservice**:
+The primary goal is now an attempted **same-version Meilisearch port**:
 
-- the Wasm implementation runs as a Spin HTTP component on wasmtime;
-- the API surface mimics a small, useful subset of Meilisearch;
-- the OCI baseline is the official `getmeili/meilisearch` Docker image, pinned to a specific version;
-- both systems use the same fixture data and the same benchmarked API paths wherever possible.
+- use the official upstream `meilisearch/meilisearch` source pinned to `v1.43.0`;
+- keep the OCI baseline pinned to `getmeili/meilisearch:v1.43.0`;
+- replace the native Meilisearch HTTP/server boundary with a Spin HTTP component where possible;
+- route the benchmark API surface into the highest upstream Meilisearch layer that can realistically compile for `wasm32-wasip2`;
+- document every storage, runtime, and API deviation needed for WASI/Spin.
 
-The goal is not to port all of Meilisearch to WebAssembly. The goal is to create a realistic search-service workload with a familiar HTTP contract, then compare Wasm/Spin and OCI containers on the dimensions required by the course topic.
+This is a feasibility and benchmark project, not a claim that unmodified Meilisearch already runs in Spin. If full upstream compilation is blocked, the project must preserve the evidence and continue with the closest honest source-sharing port.
 
 ## 3. Research questions
 
 The final report must answer:
 
-- Does the Spin/wasmtime service cold-start faster than the OCI Meilisearch container?
-- How much memory does each isolation model use at idle and under load?
-- Which system provides better throughput and tail latency for the selected API surface?
-- How do WASI capability-based sandboxing and container isolation differ operationally?
-- Is Wasm a practical serverless isolation substrate for this class of microservice?
+- Can the pinned Meilisearch `v1.43.0` source compile for native host builds?
+- Which upstream crates compile for `wasm32-wasip2`, and where does the Spin/WASI port fail?
+- Can a Spin HTTP component reuse upstream Meilisearch API, parsing, search, or indexing layers?
+- How does Spin/wasmtime cold-start latency compare with the official OCI container?
+- How much memory overhead and isolation cost does each runtime model show?
+- How do throughput and tail latency compare on the same fixture and selected API routes?
+- Is Wasm a practical serverless isolation substrate for this class of search microservice?
 
-## 4. Scope and success criteria
+## 4. Version pinning
+
+| Item | Required value |
+|---|---|
+| Upstream source | `meilisearch/meilisearch` tag `v1.43.0` |
+| Observed upstream commit | `475ed56e5612df0dbb826748add5f93e0e7d5500` |
+| OCI baseline image | `getmeili/meilisearch:v1.43.0` |
+| Spin target | Rust `wasm32-wasip2` component |
+| Spin runtime | wasmtime through Spin |
+
+The repository must include scripts that fetch or verify the pinned upstream source. The generated upstream checkout may live under `vendor/meilisearch/`, but it does not need to be committed if it is reproducibly fetched by script.
+
+## 5. Porting scope
 
 ### In scope
 
-- A Rust-based Spin HTTP component targeting `wasm32-wasip2`.
-- A minimal Meilisearch-compatible search API that keeps request logic in memory and snapshots state through Spin's default key-value store for local smoke-test continuity.
-- A pinned official Meilisearch OCI baseline using Docker or Podman.
-- Reproducible benchmark scripts for cold start, memory, throughput, and latency.
-- Raw CSV results, processed summaries, plots, and a final written interpretation.
-- Documentation that explains setup, methodology, known limitations, and reproduction steps.
+- Native host verification of the pinned upstream Meilisearch source.
+- Layered WASI feasibility checks for selected upstream crates.
+- A Spin HTTP adapter under `spin-meili/crates/spin-http-adapter`.
+- A compatibility crate under `spin-meili/crates/meili-wasi-compat` for documenting and isolating WASI-specific deviations.
+- Reuse of upstream Meilisearch code wherever it compiles cleanly or can be adapted with narrowly scoped shims.
+- A legacy subset Spin implementation retained only as a fallback/reference path while the upstream port boundary is explored.
+- The official Meilisearch OCI container as the native baseline.
+- Reproducible fixture loading, smoke checks, benchmark scripts, raw CSVs, plots, and final interpretation.
 
-### Success criteria
+### Expected blocker areas
 
-The project is successful when:
+The project must explicitly investigate and document:
 
-- the Spin service builds with `spin build` and runs with `spin up`;
-- the OCI baseline runs locally from the pinned `getmeili/meilisearch` image;
-- the same benchmark fixture can be loaded into both systems;
-- the required MVP endpoints work on the Spin service;
-- cold-start latency, memory usage, throughput, latency percentiles, and errors are measured for both systems;
-- results are presented as tables and plots;
-- the report gives a clear conclusion about Wasm as a serverless-style isolation substrate.
+- LMDB/heed storage dependencies;
+- memory-mapped storage assumptions;
+- filesystem and snapshot behavior;
+- Tokio/native server runtime assumptions;
+- background task scheduling;
+- native process configuration;
+- telemetry and other host integrations;
+- C or crypto build dependencies that do not target `wasm32-wasip2` cleanly.
 
-### Out of scope for the three-week MVP
+### Out of scope
 
-- Full Meilisearch API compatibility.
-- LMDB, memory-mapped storage, or compatibility with native `data.ms` files.
-- Durable storage in the Spin MVP.
-- Binary-compatible Meilisearch dumps or snapshots.
-- Vector search, hybrid search, facet search, federated search, tenant tokens, webhooks, or full key management.
-- Kubernetes or production SpinKube deployment.
-- Writing a new WebAssembly runtime or serverless platform.
+- Pretending a custom subset is identical to upstream Meilisearch.
+- Binary compatibility with native Meilisearch `data.ms` directories.
+- Full Meilisearch API coverage in the Spin adapter.
+- Kubernetes or SpinKube deployment for the MVP.
+- Production persistence guarantees inside Spin.
+- Rewriting Meilisearch from scratch.
 
-SQLite persistence and external stores may be discussed as future work, but they are not required for the benchmark MVP.
+## 6. Benchmark API surface
 
-## 5. Required API surface
+The benchmark remains intentionally narrow so both runtimes can be compared on the same HTTP surface:
 
-The Spin service must implement the following MVP endpoints.
-
-| Endpoint | Required behavior |
+| Endpoint | Purpose |
 |---|---|
-| `GET /health` | Return `200 OK` with a JSON status object. |
-| `GET /version` | Return implementation name, project version, and optional Git/build metadata. |
-| `GET /indexes` | Return the list of known indexes. |
-| `POST /indexes/{uid}/documents` | Add or replace documents in an index; create the index if missing. |
-| `POST /indexes/{uid}/search` | Run basic search against the selected index. |
-| `GET /stats` | Return instance-level and per-index counts useful for benchmarking. |
-| `GET /tasks` | Return accepted document-ingestion tasks or a simplified synchronous task facade. |
+| `GET /health` | Service readiness and cold-start success marker. |
+| `GET /version` | Runtime/source identity and build metadata. |
+| `GET /indexes` | List benchmark indexes. |
+| `POST /indexes/{uid}/documents` | Load the shared fixture. |
+| `POST /indexes/{uid}/search` | Run search and placeholder search. |
+| `GET /stats` | Report document/index counts. |
+| `GET /tasks` | Report ingestion task state. |
 
-### Search behavior
+The shared fixture uses:
 
-The MVP search endpoint must support at least:
+- index UID: `movies`;
+- primary key: `id`;
+- fields: `id`, `title`, `overview`, `genre`, `year`;
+- smoke query: `space`.
 
-- `q`;
-- `offset`;
-- `limit`.
+The OCI baseline must use native Meilisearch endpoints. The Spin side must use upstream Meilisearch request/search/indexing logic where possible. If the Spin side falls back to the legacy subset implementation, that must be labeled as a porting deviation.
 
-The Spin implementation should provide deterministic full-text search good enough for benchmarking, not perfect Meilisearch ranking parity. Empty `q` should behave as placeholder search and return paginated documents. Search results should include enough metadata to compare basic shape and counts with the OCI baseline.
+## 7. Required scripts and evidence
 
-### Document ingestion behavior
+The repository must provide:
 
-`POST /indexes/{uid}/documents` must:
+- `scripts/fetch-meilisearch.sh` to fetch the pinned upstream source;
+- `scripts/check-upstream-native.sh` to run a native upstream cargo check;
+- `scripts/check-upstream-wasi.sh` to run layered `wasm32-wasip2` checks and generate `docs/upstream-wasi-blockers.md`;
+- `benchmarks/smoke_spin.sh` to check the Spin service;
+- `benchmarks/smoke_oci.sh` to check the official OCI service.
 
-- accept a JSON array of documents;
-- require a stable primary key field, documented in the fixture schema;
-- return a Meilisearch-like task object;
-- make documents visible to later searches in the benchmark flow.
+`docs/upstream-wasi-blockers.md` must be treated as primary project evidence. It should identify the highest upstream crates that compile for WASI and the first blocker layers.
 
-The task object may represent synchronous completion internally, as long as this limitation is documented.
+## 8. Benchmark requirements
 
-### Error behavior
+All measurements must run on the same machine, using the same fixture and the same client tooling where possible.
 
-The service must return JSON errors with:
-
-- an HTTP status code appropriate to the failure;
-- a stable machine-readable code;
-- a human-readable message.
-
-## 6. Architecture requirements
-
-The implementation should separate portable search logic from Spin-specific HTTP glue.
-
-Recommended workspace layout:
-
-```text
-.
-|-- README.md
-|-- requirements.md
-|-- PROJECT_PLAN_3W.md
-|-- spin-meili/
-|   |-- Cargo.toml
-|   |-- spin.toml
-|   `-- crates/
-|       |-- core/
-|       |-- storage-memory/
-|       `-- spin-http-adapter/
-|-- oci-meilisearch/
-|   |-- docker-compose.yml
-|   `-- README.md
-|-- fixtures/
-|   `-- documents.json
-|-- benchmarks/
-|   |-- common.sh
-|   |-- cold_start.sh
-|   |-- throughput.sh
-|   |-- memory.sh
-|   |-- loadgen.py
-|   `-- run_all.sh
-|-- analysis/
-|   `-- analyze_results.py
-|-- results/
-|   |-- raw/
-|   |-- processed/
-|   `-- plots/
-|-- docs/
-|   |-- ENVIRONMENT.md
-|   `-- METHODOLOGY.md
-`-- report/
-    |-- report.md
-    `-- figures/
-```
-
-Recommended crate responsibilities:
-
-- `core`: request/response models, indexing, tokenization, ranking, pagination, and stats.
-- `storage-memory`: portable in-memory index and task model for tests and benchmark logic.
-- `spin-http-adapter`: Spin HTTP trigger integration, routing, auth hook if used, and JSON error mapping.
-
-The MVP must not depend on LMDB, mmap, background threads, host filesystem persistence, or native Meilisearch storage internals.
-
-## 7. Toolchain and runtime requirements
-
-### Wasm/Spin side
+### Cold start
 
 Required:
 
-- Rust with `rustup`;
-- target `wasm32-wasip2`;
-- Spin CLI pinned in documentation;
-- wasmtime through Spin;
-- `spin.toml` checked into the repository;
-- `rust-toolchain.toml` or a documented Rust version.
+- repeated stop/start runs, at least 20 repetitions per system;
+- first successful `/health` as the basic readiness marker;
+- optional start-plus-first-search scenario;
+- CSV output with min, max, mean, median, p95, failures, and raw samples.
 
-Reference commands:
-
-```bash
-rustup target add wasm32-wasip2
-spin build
-spin up --listen 127.0.0.1:8080
-```
-
-### OCI side
+### Throughput and latency
 
 Required:
 
-- Docker or Podman;
-- Docker Compose or equivalent start script;
-- pinned `getmeili/meilisearch:<version>`;
-- documented master key and data reset behavior;
-- service listening on a separate port, for example `127.0.0.1:8081`.
+- fixed concurrency levels: `10`, `50`, `100`, `200`;
+- scenarios for `{"q":"space"}` and `{"q":""}`;
+- latency percentiles p50, p95, p99;
+- request rate, error count, and response validation;
+- raw CSV plus processed tables and plots.
 
-The report must state the exact image tag used for the baseline.
+### Memory and isolation
 
-## 8. Benchmark methodology
+Required:
 
-All measurements must be run on the same machine, with the same fixture data, the same client tool, and the same benchmark routes where possible.
+- idle memory sampling;
+- under-load sampling;
+- peak and post-load memory where possible;
+- container memory through Docker/cgroup metrics;
+- Spin host/runtime memory through process metrics available on the host;
+- qualitative isolation comparison between WASI capabilities and OCI container isolation.
 
-### Environment recording
+Memory metrics are not perfectly symmetric across Spin and OCI. The report must state this clearly.
 
-`docs/ENVIRONMENT.md` or generated metadata must include:
+## 9. Feasibility checkpoint
 
-- OS and kernel version;
-- CPU model and core count;
-- RAM;
-- power/performance mode if known;
-- Rust version;
-- Spin version;
-- Docker/Podman version;
-- Meilisearch image tag;
-- Git commit SHA for the benchmark run.
+The project is successful if it honestly reaches one of these outcomes:
 
-### Fixture requirements
+1. **Best case:** a Spin component reuses enough upstream Meilisearch code to serve the benchmark endpoints from the pinned source version.
+2. **Acceptable porting outcome:** upstream API/parsing/search layers are reused, but storage or runtime boundaries require documented WASI compatibility shims.
+3. **Acceptable feasibility outcome:** full upstream reuse is blocked by documented evidence, and the project benchmarks the existing Spin subset only as a clearly labeled fallback while explaining why exact equivalence is not currently practical.
 
-The fixture must:
+The final conclusion must not hide the difference between these outcomes.
 
-- be stored in the repository or generated by a deterministic script;
-- include enough documents to make search and pagination meaningful;
-- use the same document schema for both Spin and OCI;
-- document the primary key field;
-- be loaded before throughput and memory benchmarks.
+## 10. Deliverables
 
-### Cold-start benchmark
-
-Cold start is defined as:
-
-1. ensure the service is stopped and previous service state is reset where required;
-2. start the service;
-3. send requests until the first successful `GET /health` or equivalent benchmark route response;
-4. record elapsed time;
-5. stop the service;
-6. repeat.
-
-Required metrics:
-
-- minimum;
-- maximum;
-- mean;
-- median;
-- p95;
-- number of failed runs.
-
-Minimum repetitions: **20 cold starts per system**, unless the report explains why fewer were possible.
-
-### Throughput and latency benchmark
-
-Throughput tests must run against at least:
-
-- `POST /indexes/{uid}/search` with a non-empty query;
-- `POST /indexes/{uid}/search` with empty `q` placeholder search.
-
-Required concurrency levels:
-
-```text
-10, 50, 100, 200
-```
-
-Required metrics:
-
-- requests per second;
-- p50 latency;
-- p95 latency;
-- p99 latency;
-- average latency;
-- error count and error rate.
-
-Each measured cell should include a warmup period before the timed interval.
-
-### Memory and isolation benchmark
-
-Memory measurements must include:
-
-- idle memory after startup;
-- memory during low concurrency load;
-- memory during high concurrency load;
-- peak memory during the benchmark;
-- post-load memory if practical.
-
-The report must distinguish:
-
-- Spin host process memory and any observable Wasm component memory;
-- OCI container memory from cgroups or `docker stats`;
-- qualitative isolation differences between WASI capabilities and container namespaces/cgroups/seccomp/AppArmor-style controls.
-
-Spin memory and container memory may not be perfectly equivalent measurements. This limitation must be stated rather than hidden.
-
-### Output requirements
-
-Benchmark scripts must write raw machine-readable results, preferably CSV, into `results/raw/`. Analysis scripts must produce:
-
-- processed summary tables in `results/processed/`;
-- plots in `results/plots/`;
-- report-ready figures copied or referenced from `report/figures/`.
-
-## 9. Fairness rules
-
-The comparison must be framed as **same benchmark surface**, not identical implementation.
-
-Required fairness rules:
-
-- use the same machine and network path, preferably localhost;
-- run only one measured service at a time unless a benchmark explicitly requires otherwise;
-- use the same fixture data and query set;
-- pin tool versions and container image tags;
-- separate cold-start measurements from warm throughput measurements;
-- report failed runs and error rates;
-- avoid changing benchmark scripts between Spin and OCI runs except for target URL and service-control command.
-
-## 10. Security and isolation discussion
-
-The project must include a qualitative comparison of the isolation models.
-
-The Wasm/Spin discussion should cover:
-
-- WASI capability-oriented access;
-- host-controlled resources;
-- absence of direct general OS access from the component;
-- small startup footprint as a serverless advantage;
-- maturity and ecosystem limitations.
-
-The OCI discussion should cover:
-
-- process, filesystem, and network namespace isolation;
-- cgroups resource accounting and limits;
-- mature deployment and observability tooling;
-- larger image and runtime surface compared with a Wasm component.
-
-The conclusion must connect these isolation properties back to the measured cold-start, memory, and throughput results.
-
-## 11. Deliverables
-
-The final repository should include:
-
-1. Working Spin/wasmtime Meilisearch-compatible MVP.
-2. Working official Meilisearch OCI baseline.
-3. Fixture data and load/import scripts.
-4. Benchmark scripts for cold start, memory, throughput, and latency.
-5. Raw benchmark results.
-6. Processed summaries and plots.
-7. Methodology and environment documentation.
-8. Final report with limitations and recommendation.
-9. Demo instructions for running both systems and reproducing at least one benchmark.
-
-## 12. Known limitations to document
-
-The final report must explicitly state:
-
-- the Spin service is a subset implementation, not Meilisearch itself;
-- API-level equivalence is limited to selected endpoints and selected request shapes;
-- ranking behavior may differ from native Meilisearch;
-- the Spin MVP uses a local Spin key-value snapshot for request-to-request continuity and benchmark scripts must clear it when a clean cold-start state is required;
-- memory measurements for Spin and OCI are collected through different runtime mechanisms;
-- results from a local benchmark do not automatically generalize to a production serverless platform.
-
-## 13. Optional stretch work
-
-Stretch work is allowed only after the benchmark MVP is complete:
-
-- SQLite-backed Spin storage;
-- `GET /tasks/{id}`;
-- `GET /indexes/{uid}/documents`;
-- partial document updates;
-- more realistic ranking/tokenization;
-- a larger fixture generator;
-- SpinKube deployment notes;
-- comparison with another lightweight container baseline.
+- Working official OCI Meilisearch baseline pinned to `v1.43.0`.
+- Pinned upstream source fetch/check scripts.
+- Native upstream build evidence.
+- WASI feasibility blocker report.
+- Spin HTTP adapter and compatibility crate.
+- Legacy subset fallback kept clearly named and documented.
+- Smoke scripts for Spin and OCI.
+- Benchmark scripts and raw CSV outputs.
+- Processed tables, plots, and final report.
+- Reproducibility instructions in `README.md` and `docs/METHODOLOGY.md`.

@@ -8,78 +8,74 @@ We are working on:
 
 > WebAssembly Microservices with Spin/wasmtime: deploy a microservice application using Spin/WASI components and compare cold-start latency, memory isolation, and throughput against equivalent OCI containers.
 
-Our concrete project is a **Meilisearch-compatible search microservice benchmark**:
+The project has pivoted from a custom Meilisearch-compatible subset to an attempted **upstream Meilisearch-on-Spin port**:
 
-- **Wasm side:** a subset-first search service implemented in Rust and running as a Spin/wasmtime HTTP component.
-- **OCI side:** the official native `getmeili/meilisearch:v1.43.0` container.
-- **Goal:** compare Wasm/Spin and OCI containers on cold start, memory behavior/isolation, throughput, and latency.
+- **OCI side:** official `getmeili/meilisearch:v1.43.0`.
+- **Source side:** upstream `meilisearch/meilisearch` tag `v1.43.0`, observed commit `475ed56e5612df0dbb826748add5f93e0e7d5500`.
+- **Wasm side:** Spin/wasmtime HTTP component that should reuse as much upstream Meilisearch code as technically possible.
+- **Fallback:** the existing custom Spin subset remains available only as a labeled fallback if upstream crates cannot be adapted within the project.
 
 ## What we have done
 
-- Rewrote the project requirements and three-week plan around the Meilisearch-compatible benchmark scope.
-- Built a Week 1 scaffold with:
-  - `spin-meili/` Rust workspace for the Spin service;
+- Built the original Week 1 smoke scaffold:
+  - `spin-meili/` Rust Spin workspace;
   - `oci-meilisearch/` Docker Compose baseline;
-  - `fixtures/documents.json` shared test fixture;
+  - `fixtures/documents.json`;
   - `benchmarks/smoke_spin.sh` and `benchmarks/smoke_oci.sh`;
-  - `docs/ENVIRONMENT.md` and `docs/METHODOLOGY.md`.
-- Implemented the Spin MVP endpoints:
-  - `GET /health`
-  - `GET /version`
-  - `GET /indexes`
-  - `POST /indexes/{uid}/documents`
-  - `POST /indexes/{uid}/search`
-  - `GET /stats`
-  - `GET /tasks`
-- Implemented basic deterministic search:
-  - shared index UID: `movies`;
-  - primary key: `id`;
-  - supports `q`, `offset`, `limit`;
-  - empty `q` works as placeholder search;
-  - non-empty `q` matches case-insensitively over document text fields.
-- Added Spin default key-value persistence for request-to-request continuity.
-  - Local state is stored by Spin in `spin-meili/.spin/sqlite_key_value.db`.
-  - Benchmark scripts should remove this file when they need a clean cold-start state.
+  - environment and methodology docs.
+- Verified that both the Spin fallback and OCI baseline can accept the same fixture and search for `space`.
+- Added upstream-port scaffolding:
+  - `scripts/fetch-meilisearch.sh`;
+  - `scripts/check-upstream-native.sh`;
+  - `scripts/check-upstream-wasi.sh`;
+  - `spin-meili/crates/meili-wasi-compat`;
+  - renamed the custom search crate to `legacy-subset-core` so it is no longer presented as the main project core.
+- Fetched upstream Meilisearch `v1.43.0` into `vendor/meilisearch/`.
+- Ran a native upstream check for package `meilisearch`; it succeeds.
+- Ran layered `wasm32-wasip2` checks; small crates pass, but `milli` and higher layers currently fail.
 
-## What already works
+## Current technical evidence
 
-The Spin service builds and passes checks:
+Native upstream check:
 
 ```bash
-cd spin-meili
-cargo fmt --check
-cargo test --workspace
-spin build
-spin doctor
+scripts/check-upstream-native.sh
 ```
 
-The Spin smoke test works:
+Result: pass for pinned upstream `meilisearch`.
+
+Layered WASI check:
 
 ```bash
-spin up --listen 127.0.0.1:8080
-benchmarks/smoke_spin.sh
+scripts/check-upstream-wasi.sh
 ```
 
-The OCI baseline also works:
+Current result:
 
-```bash
-cd oci-meilisearch
-docker compose up -d
-cd ..
-benchmarks/smoke_oci.sh
+- `flatten-serde-json`: pass;
+- `filter-parser`: pass;
+- `milli`: fail;
+- `meilisearch-types`: fail;
+- `routes`: fail;
+- `meilisearch`: fail.
+
+The first observed failures are in dependency/runtime layers such as `ring` C compilation for `wasm32-wasip2` and Tokio wasm feature constraints. LMDB/heed and memory-mapped storage are still expected deeper blockers because Meilisearch storage relies on LMDB and mmap.
+
+Detailed evidence is in:
+
+```text
+docs/upstream-wasi-blockers.md
 ```
 
-Both implementations accept the same fixture and return matching hits for the smoke query `space`.
+## Current benchmark surface
 
-## Current comparison surface
-
-For Week 2 benchmarking, we plan to compare:
+We still plan to compare:
 
 - cold start to first successful `/health`;
 - search throughput for `POST /indexes/movies/search` with `{"q":"space"}`;
 - placeholder search throughput for `POST /indexes/movies/search` with `{"q":""}`;
 - memory at idle and under load;
-- latency percentiles: p50, p95, p99;
+- latency percentiles p50, p95, p99;
 - error rate under concurrency.
 
 Planned concurrency levels:
@@ -90,58 +86,34 @@ Planned concurrency levels:
 
 ## Important limitations
 
-- The Spin service is **Meilisearch-compatible only for a small subset**, not a full Meilisearch port.
-- Ranking behavior is intentionally simpler than native Meilisearch.
-- The comparison is API-level on selected routes, not binary/runtime equivalence.
-- Spin state currently uses local Spin key-value storage for practical smoke testing.
-- Memory measurements will not be perfectly symmetric:
-  - OCI has container/cgroup memory;
-  - Spin is measured as a host process plus runtime behavior.
+- Full unmodified Meilisearch does not currently compile for `wasm32-wasip2` in our first feasibility check.
+- The current Spin service is still the legacy subset fallback, not the upstream daemon.
+- If we replace LMDB/mmap storage with a WASI-compatible layer, that must be treated as a porting deviation.
+- Only a full or partial upstream reuse tier can support a same-source comparison.
+- If we fall back to the subset, the result is still useful for Wasm-vs-container benchmarking, but not a same-application benchmark.
 
 ## Questions to ask the teacher
 
-1. Is the chosen scope acceptable?
-   - We are not porting all of Meilisearch; we are building a comparable subset workload and benchmarking it against native Meilisearch in Docker.
+1. Is the new goal acceptable: attempt same pinned Meilisearch source/version first, then document any WASI blockers and deviations?
 
-2. Is API-level equivalence enough for the OCI comparison?
-   - The Wasm service implements selected Meilisearch-like endpoints, while OCI runs real Meilisearch.
+2. If full upstream Meilisearch cannot compile because of LMDB/mmap/runtime dependencies, is a partial port acceptable if it reuses upstream API/query/search layers and replaces storage?
 
-3. Should we keep native Meilisearch as the OCI baseline, or add a simpler container baseline too?
-   - Native Meilisearch is realistic but much more feature-complete than our subset.
+3. Is the current blocker evidence enough to justify a fallback benchmark if the full port is not feasible within the course timeline?
 
-4. For cold-start measurement, should startup include fixture loading?
-   - Option A: measure pure service start to `/health`.
-   - Option B: measure start plus fixture load plus first successful search.
-   - These answer different questions.
+4. Should the final comparison require same binary/application behavior, or is same API surface plus documented porting deviations acceptable?
 
-5. How should we present the Spin key-value state in the report?
-   - It is useful for request-to-request continuity, but clean benchmark runs need the local state file removed.
+5. Should cold start measure only first `/health`, or should it include fixture load and first successful search?
 
-6. What is the expected depth of the memory isolation discussion?
-   - We can compare WASI capabilities and wasmtime sandboxing against namespaces/cgroups/seccomp at a conceptual level, then connect it to measured memory overhead.
+6. How large should the benchmark fixture be for the final run?
 
-7. How large should the benchmark fixture be?
-   - Current fixture is small for smoke tests.
-   - Week 2 likely needs either a larger deterministic generated fixture or a real public dataset.
+7. What level of memory isolation discussion is expected: conceptual WASI/container comparison, measured overhead, or both?
 
-8. How many benchmark repetitions are expected?
-   - Our draft says at least 20 cold starts and repeated throughput runs, but we should confirm if that is enough for the course.
-
-9. Should we benchmark only locally, or is a Kubernetes/SpinKube deployment expected?
-   - Current plan keeps Kubernetes out of scope for the MVP.
-
-10. What final deliverable format is preferred?
-    - Markdown report, PDF report, presentation slides, or all of these.
+8. What final deliverable format is preferred: Markdown report, PDF, presentation slides, or all of these?
 
 ## Suggested next steps after consultation
 
-- Confirm benchmark definition for cold start.
-- Choose fixture size and dataset source.
-- Implement Week 2 scripts:
-  - `cold_start.sh`
-  - `throughput.sh`
-  - `memory.sh`
-  - `run_all.sh`
-  - optional Python load generator.
-- Add result CSV schema and analysis script.
-- Run the first small benchmark campaign and bring early numbers to the next consultation.
+- Decide whether to spend Week 2 on fixing WASI blockers or on the fallback benchmark harness.
+- Try to reuse the highest passing upstream crates in the Spin adapter.
+- If `milli` remains blocked, document the exact reason and decide whether a WASI-compatible storage abstraction is acceptable.
+- Implement cold-start, throughput, and memory scripts.
+- Run a small pilot benchmark and bring early numbers to the next consultation.

@@ -1,4 +1,4 @@
-use meili_spin_core::{ApiError, SearchEngine, SearchRequest};
+use meili_spin_legacy_subset_core::{ApiError, SearchEngine, SearchRequest};
 use serde::Serialize;
 use serde_json::Value;
 use spin_sdk::http::{IntoResponse, Method, Request, Response};
@@ -8,7 +8,7 @@ use spin_sdk::key_value::Store;
 const ENGINE_STORE_KEY: &str = "engine";
 
 #[http_component]
-fn handle_meili_spin_subset(req: Request) -> anyhow::Result<impl IntoResponse> {
+fn handle_meili_spin_port(req: Request) -> anyhow::Result<impl IntoResponse> {
     Ok(route(req))
 }
 
