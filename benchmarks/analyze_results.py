@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import math
@@ -10,14 +11,28 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
-from benchmark_lib import RESULTS_PLOTS, RESULTS_PROCESSED, RESULTS_RAW, ensure_result_dirs
+from benchmark_lib import (
+    RESULTS_PLOTS,
+    RESULTS_PROCESSED,
+    RESULTS_RAW,
+    ensure_result_dirs,
+    latest_raw_files,
+)
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--all-runs",
+        action="store_true",
+        help="Aggregate every raw CSV instead of only the latest best/latest run id per prefix.",
+    )
+    args = parser.parse_args()
+
     ensure_result_dirs()
-    cold_summary = summarize_cold_start()
-    load_summary = summarize_load()
-    memory_summary = summarize_memory()
+    cold_summary = summarize_cold_start(use_latest_only=not args.all_runs)
+    load_summary = summarize_load(use_latest_only=not args.all_runs)
+    memory_summary = summarize_memory(use_latest_only=not args.all_runs)
 
     write_csv(RESULTS_PROCESSED / "cold_start_summary.csv", cold_summary)
     write_csv(RESULTS_PROCESSED / "load_summary.csv", load_summary)
@@ -27,54 +42,90 @@ def main() -> int:
     return 0
 
 
-def summarize_cold_start() -> list[dict[str, object]]:
+def raw_paths(prefix: str, use_latest_only: bool) -> list[Path]:
+    if use_latest_only:
+        latest = latest_raw_files(prefix)
+        return latest if latest else sorted(RESULTS_RAW.glob(f"{prefix}_*.csv"))
+    return sorted(RESULTS_RAW.glob(f"{prefix}_*.csv"))
+
+
+def summarize_cold_start(use_latest_only: bool = True) -> list[dict[str, object]]:
     groups: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
-    for path in sorted(RESULTS_RAW.glob("cold_start_*.csv")):
+    for path in raw_paths("cold_start", use_latest_only):
         with path.open(newline="", encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
                 groups[(row["system"], row["scenario"])].append(row)
 
     rows: list[dict[str, object]] = []
     for (system, scenario), values in sorted(groups.items()):
-        ready = [float(row["ready_ms"]) for row in values if row.get("ready_ms")]
-        first_search = [
-            float(row["first_search_ms"]) for row in values if row.get("first_search_ms")
-        ]
-        rows.append(
-            {
-                "system": system,
-                "scenario": scenario,
-                "metric": "ready_ms",
-                **stats_for(values, ready),
-            }
-        )
-        if first_search:
+        for metric in cold_metrics(values):
             rows.append(
                 {
                     "system": system,
                     "scenario": scenario,
-                    "metric": "first_search_ms",
-                    **stats_for(values, first_search),
+                    "metric": metric["name"],
+                    **metric["stats"],
                 }
             )
     return rows
 
 
-def summarize_load() -> list[dict[str, object]]:
+def cold_metrics(values: list[dict[str, str]]) -> list[dict[str, object]]:
+    metrics: list[dict[str, object]] = []
+    metric_fields = [
+        ("ready_ms", "ready_ms"),
+        ("search_after_ready_ms", "search_after_ready_ms"),
+        ("total_cold_path_ms", "total_cold_path_ms"),
+        ("first_search_ms", "first_search_ms"),
+    ]
+    for name, field in metric_fields:
+        samples = [
+            float(row[field])
+            for row in values
+            if row.get(field)
+        ]
+        if not samples and field == "first_search_ms":
+            samples = [
+                float(row["first_search_ms"])
+                for row in values
+                if row.get("first_search_ms")
+            ]
+        if not samples and field == "total_cold_path_ms":
+            samples = [
+                float(row["first_search_ms"])
+                for row in values
+                if row.get("first_search_ms") and not row.get("total_cold_path_ms")
+            ]
+        if samples:
+            metrics.append({"name": name, "stats": stats_for(values, samples)})
+    return metrics
+
+
+def summarize_load(use_latest_only: bool = True) -> list[dict[str, object]]:
     groups: dict[tuple[str, str, str], list[dict[str, str]]] = defaultdict(list)
+    repeat_rates: dict[tuple[str, str, str], list[float]] = defaultdict(list)
     durations: dict[tuple[str, str, str], float] = defaultdict(float)
 
-    for path in sorted(RESULTS_RAW.glob("load_*.csv")):
-        file_groups: set[tuple[str, str, str]] = set()
+    for path in raw_paths("load", use_latest_only):
+        duration = read_load_duration(path)
+        repeat_groups: dict[tuple[str, str, str, str], list[dict[str, str]]] = defaultdict(list)
         with path.open(newline="", encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
                 key = (row["system"], row["query"], row["concurrency"])
                 groups[key].append(row)
-                file_groups.add(key)
+                repeat = row.get("repeat") or "1"
+                repeat_groups[(row["system"], row["query"], row["concurrency"], repeat)].append(row)
 
-        duration = read_load_duration(path)
-        for key in file_groups:
-            durations[key] += duration
+        for repeat_key, repeat_rows in repeat_groups.items():
+            system, query, concurrency, _repeat = repeat_key
+            latencies = [
+                float(row["latency_ms"])
+                for row in repeat_rows
+                if row.get("success") == "true" and row.get("latency_ms")
+            ]
+            if latencies:
+                repeat_rates[(system, query, concurrency)].append(len(latencies) / max(duration, 0.001))
+                durations[(system, query, concurrency)] += duration
 
     rows: list[dict[str, object]] = []
     for (system, query, concurrency), values in sorted(
@@ -87,21 +138,25 @@ def summarize_load() -> list[dict[str, object]]:
         ]
         success_count = len(latencies)
         duration = max(durations[(system, query, concurrency)], 0.001)
+        rates = repeat_rates.get((system, query, concurrency), [])
+        rate_stats = repeat_stats(rates)
         rows.append(
             {
                 "system": system,
                 "query": query,
                 "concurrency": concurrency,
                 "request_rate": f"{success_count / duration:.3f}",
+                "request_rate_stddev": rate_stats["stddev"],
+                "request_rate_runs": rate_stats["runs"],
                 **stats_for(values, latencies),
             }
         )
     return rows
 
 
-def summarize_memory() -> list[dict[str, object]]:
+def summarize_memory(use_latest_only: bool = True) -> list[dict[str, object]]:
     groups: dict[tuple[str, str, str], list[dict[str, str]]] = defaultdict(list)
-    for path in sorted(RESULTS_RAW.glob("memory_*.csv")):
+    for path in raw_paths("memory", use_latest_only):
         with path.open(newline="", encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
                 groups[(row["system"], row["phase"], row["source"])].append(row)
@@ -119,6 +174,15 @@ def summarize_memory() -> list[dict[str, object]]:
             }
         )
     return rows
+
+
+def repeat_stats(samples: list[float]) -> dict[str, object]:
+    if len(samples) <= 1:
+        return {"stddev": "", "runs": len(samples)}
+    return {
+        "stddev": f"{statistics.pstdev(samples):.3f}",
+        "runs": len(samples),
+    }
 
 
 def stats_for(all_rows: list[dict[str, str]], samples: list[float]) -> dict[str, object]:
@@ -139,6 +203,7 @@ def stats_for(all_rows: list[dict[str, str]], samples: list[float]) -> dict[str,
             "p95": "",
             "p99": "",
             "max": "",
+            "stddev": "",
         }
 
     ordered = sorted(samples)
@@ -153,6 +218,7 @@ def stats_for(all_rows: list[dict[str, str]], samples: list[float]) -> dict[str,
         "p95": f"{percentile(ordered, 95):.3f}",
         "p99": f"{percentile(ordered, 99):.3f}",
         "max": f"{ordered[-1]:.3f}",
+        "stddev": f"{statistics.pstdev(ordered):.3f}" if len(ordered) > 1 else "0.000",
     }
 
 
@@ -206,6 +272,7 @@ def make_plots(
     plot_load_latency(plt, load_summary)
     plot_load_throughput(plt, load_summary)
     plot_memory(plt, memory_summary)
+    plot_memory_host_rss(plt, memory_summary)
 
 
 def plot_cold_start(plt, rows: list[dict[str, object]]) -> None:
@@ -239,10 +306,17 @@ def plot_load_latency(plt, rows: list[dict[str, object]]) -> None:
                 continue
             series.sort(key=lambda row: int(row["concurrency"]))
             label_query = query if query else "empty"
-            plt.plot(
+            y = [float(row["p95"]) for row in series]
+            yerr = [
+                float(row["stddev"]) if row.get("stddev") not in ("", None) else 0.0
+                for row in series
+            ]
+            plt.errorbar(
                 [int(row["concurrency"]) for row in series],
-                [float(row["p95"]) for row in series],
+                y,
+                yerr=yerr,
                 marker="o",
+                capsize=3,
                 label=f"{system} {label_query}",
             )
     plt.xlabel("Concurrency")
@@ -270,10 +344,19 @@ def plot_load_throughput(plt, rows: list[dict[str, object]]) -> None:
                 continue
             series.sort(key=lambda row: int(row["concurrency"]))
             label_query = query if query else "empty"
-            plt.plot(
+            y = [float(row["request_rate"]) for row in series]
+            yerr = [
+                float(row["request_rate_stddev"])
+                if row.get("request_rate_stddev") not in ("", None)
+                else 0.0
+                for row in series
+            ]
+            plt.errorbar(
                 [int(row["concurrency"]) for row in series],
-                [float(row["request_rate"]) for row in series],
+                y,
+                yerr=yerr,
                 marker="o",
+                capsize=3,
                 label=f"{system} {label_query}",
             )
     plt.xlabel("Concurrency")
@@ -291,15 +374,37 @@ def plot_memory(plt, rows: list[dict[str, object]]) -> None:
     plot_rows = [row for row in rows if row.get("max")]
     if not plot_rows:
         return
+    labels = [f"{row['system']} {row['phase']} ({row['source']})" for row in plot_rows]
+    values_mib = [float(row["max"]) / (1024 * 1024) for row in plot_rows]
+    plt.figure(figsize=(10, 4))
+    plt.bar(labels, values_mib)
+    plt.ylabel("Peak memory (MiB)")
+    plt.title("Memory samples by source")
+    plt.xticks(rotation=25, ha="right")
+    plt.tight_layout()
+    path = RESULTS_PLOTS / "memory_peak.png"
+    plt.savefig(path)
+    plt.close()
+    print(f"Wrote {path}")
+
+
+def plot_memory_host_rss(plt, rows: list[dict[str, object]]) -> None:
+    plot_rows = [
+        row
+        for row in rows
+        if row.get("source") == "host_process_rss" and row.get("max")
+    ]
+    if not plot_rows:
+        return
     labels = [f"{row['system']} {row['phase']}" for row in plot_rows]
     values_mib = [float(row["max"]) / (1024 * 1024) for row in plot_rows]
     plt.figure(figsize=(8, 4))
     plt.bar(labels, values_mib)
-    plt.ylabel("Peak memory (MiB)")
-    plt.title("Memory samples")
+    plt.ylabel("Peak host RSS (MiB)")
+    plt.title("Comparable host RSS memory")
     plt.xticks(rotation=20, ha="right")
     plt.tight_layout()
-    path = RESULTS_PLOTS / "memory_peak.png"
+    path = RESULTS_PLOTS / "memory_peak_host_rss.png"
     plt.savefig(path)
     plt.close()
     print(f"Wrote {path}")

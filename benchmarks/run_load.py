@@ -34,7 +34,9 @@ def main() -> int:
     parser.add_argument("--duration", type=float, default=30.0)
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--limit", type=int, default=10)
+    parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--build-oci", action="store_true")
+    parser.add_argument("--build-spin", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
@@ -42,13 +44,16 @@ def main() -> int:
     systems = parse_csv_arg(args.systems)
     queries = [normalize_query(query) for query in parse_csv_arg(args.queries)]
     concurrencies = parse_int_csv_arg(args.concurrency)
-    output = args.output or RESULTS_RAW / f"load_{timestamp_slug()}.csv"
+    run_id = timestamp_slug()
+    output = args.output or RESULTS_RAW / f"load_{run_id}.csv"
     meta_output = output.with_suffix(".json")
 
     with output.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(
             fh,
             fieldnames=[
+                "run_id",
+                "repeat",
                 "system",
                 "query",
                 "concurrency",
@@ -64,34 +69,43 @@ def main() -> int:
         request_ids = count(1)
 
         for system in systems:
-            run_id = f"load-{system}-{timestamp_slug()}"
-            service = start_service(system, run_id, build_oci=args.build_oci)
-            try:
-                wait_for_health(service.url, args.timeout)
-                post_search(service.url, "space", limit=args.limit, timeout=args.timeout)
+            for repeat in range(1, args.repeats + 1):
+                service = start_service(
+                    system,
+                    f"load-{system}-{run_id}-r{repeat}",
+                    build_oci=args.build_oci,
+                    build_spin=args.build_spin,
+                )
+                try:
+                    wait_for_health(service.url, args.timeout)
+                    post_search(service.url, "space", limit=args.limit, timeout=args.timeout)
 
-                for query in queries:
-                    for concurrency in concurrencies:
-                        run_scenario(
-                            writer=writer,
-                            writer_lock=writer_lock,
-                            request_ids=request_ids,
-                            system=system,
-                            url=service.url,
-                            query=query,
-                            concurrency=concurrency,
-                            duration=args.duration,
-                            timeout=args.timeout,
-                            limit=args.limit,
-                        )
-                        fh.flush()
-            finally:
-                stop_service(service)
+                    for query in queries:
+                        for concurrency in concurrencies:
+                            run_scenario(
+                                writer=writer,
+                                writer_lock=writer_lock,
+                                request_ids=request_ids,
+                                run_id=run_id,
+                                repeat=repeat,
+                                system=system,
+                                url=service.url,
+                                query=query,
+                                concurrency=concurrency,
+                                duration=args.duration,
+                                timeout=args.timeout,
+                                limit=args.limit,
+                            )
+                            fh.flush()
+                finally:
+                    stop_service(service)
 
     meta = {
         "kind": "load",
+        "run_id": run_id,
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "duration_seconds": args.duration,
+        "repeats": args.repeats,
         "systems": systems,
         "queries": queries,
         "concurrency": concurrencies,
@@ -107,6 +121,8 @@ def run_scenario(
     writer: csv.DictWriter,
     writer_lock: threading.Lock,
     request_ids: count,
+    run_id: str,
+    repeat: int,
     system: str,
     url: str,
     query: str,
@@ -127,6 +143,8 @@ def run_scenario(
             request_id = next(request_ids)
             success, status, latency_ms, error = post_search(url, query, limit=limit, timeout=timeout)
             row = {
+                "run_id": run_id,
+                "repeat": repeat,
                 "system": system,
                 "query": query,
                 "concurrency": concurrency,
@@ -153,8 +171,8 @@ def run_scenario(
     rate = successes / elapsed
     label = query if query else "<empty>"
     print(
-        f"[load] system={system} query={label} concurrency={concurrency} "
-        f"successes={successes} errors={errors} rate={rate:.2f}/s"
+        f"[load] run={run_id} repeat={repeat} system={system} query={label} "
+        f"concurrency={concurrency} successes={successes} errors={errors} rate={rate:.2f}/s"
     )
 
 

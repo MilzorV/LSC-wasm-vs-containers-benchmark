@@ -11,6 +11,8 @@ Full specification: [requirements.md](requirements.md).
 
 Methodology: [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
+Load harness notes: [docs/LOAD_HARNESS.md](docs/LOAD_HARNESS.md).
+
 ## Current Status
 
 - Shared search core: `spin-meili/crates/search-core`.
@@ -117,9 +119,11 @@ For the full benchmark plan:
 
 ```bash
 benchmarks/run_all.sh
+# or
+make benchmark
 ```
 
-The full run builds both runtimes, runs smoke/parity checks, collects cold-start, load, and memory samples, then generates processed summaries and plots.
+The full run builds both runtimes, runs smoke/parity checks, collects cold-start, load, and memory samples, then generates processed summaries and plots. Load runs repeat three times by default; analysis uses only the latest raw run id unless `--all-runs` is passed to `analyze_results.py`.
 
 Outputs:
 
@@ -133,10 +137,12 @@ Outputs:
 Individual runners are also available:
 
 ```bash
-benchmarks/run_cold_start.py --include-first-search
-benchmarks/run_load.py
-benchmarks/run_memory.py
+benchmarks/run_cold_start.py --include-first-search --build-spin --build-oci
+benchmarks/run_load.py --repeats 3 --build-spin --build-oci
+benchmarks/run_load_hey.py --build-spin --build-oci
+benchmarks/run_memory.py --build-spin --build-oci
 benchmarks/analyze_results.py
+make analyze
 ```
 
 ## Historical Meilisearch Checks

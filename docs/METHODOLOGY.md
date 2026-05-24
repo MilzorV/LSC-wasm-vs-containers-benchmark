@@ -102,19 +102,34 @@ benchmarks/compare_results.sh
 
 ## Benchmark Surface
 
-The benchmark scripts should measure:
+The benchmark scripts measure:
 
-- cold start to first successful `/health`;
-- optional cold start plus first successful `/search`;
+- cold start to first successful `/health` (`ready_ms`);
+- optional post-ready first search latency (`search_after_ready_ms`);
+- optional total cold path from process start through first successful search (`total_cold_path_ms`);
 - search throughput for `POST /search` with `{"q":"space"}`;
 - empty-query throughput for `POST /search` with `{"q":""}`;
 - idle and under-load memory for both systems;
 - latency percentiles p50, p95, p99;
-- error counts and response validation.
+- error counts and response validation;
+- load repeat variance when `--repeats` is greater than 1.
 
 Required concurrency levels are `10`, `50`, `100`, and `200`.
 
-Memory metrics are not perfectly symmetric across Spin and OCI. The report must state this clearly and identify whether a metric comes from Docker/cgroup data or host process sampling.
+Load harness details: [LOAD_HARNESS.md](LOAD_HARNESS.md).
+
+## Memory Measurement
+
+Memory metrics are **not perfectly symmetric** across Spin and OCI. Treat them as operational estimates and always read the `source` column.
+
+| System | Primary source | Comparable secondary source |
+|---|---|---|
+| Spin | `host_process_rss` (Spin/wasmtime process tree on the host) | none |
+| OCI | `docker_stats` (container usage reported by Docker) | `host_process_rss` (container PID tree on the host) |
+
+For cross-runtime comparison, prefer `host_process_rss` samples and the plot
+`results/plots/memory_peak_host_rss.png`. Docker-reported OCI memory remains in
+the dataset because it reflects common container operations tooling.
 
 ## Benchmark Scripts
 
@@ -130,20 +145,46 @@ Run the full benchmark:
 benchmarks/run_all.sh
 ```
 
-Raw outputs are written to `results/raw`, processed summaries to `results/processed`, and plots to `results/plots`.
+Equivalent shortcuts:
+
+```bash
+make benchmark-pilot
+make benchmark
+make analyze
+```
+
+Standalone runners rebuild artifacts when passed `--build-spin` and/or
+`--build-oci`. The orchestrator always builds before benchmarking.
+
+Analysis uses only the latest run id per raw prefix by default. Pass
+`--all-runs` to `analyze_results.py` to aggregate every historical CSV.
+
+Raw outputs are written to `results/raw`, processed summaries to
+`results/processed`, and plots to `results/plots`.
 
 ## Result File Contracts
 
 Cold start raw CSV:
 
 ```text
-system,scenario,iteration,success,ready_ms,first_search_ms,error
+system,scenario,iteration,success,ready_ms,search_after_ready_ms,total_cold_path_ms,first_search_ms,error
 ```
+
+- `ready_ms`: startup until `/health` succeeds
+- `search_after_ready_ms`: first successful `/search` after `/health`
+- `total_cold_path_ms`: startup until first successful `/search`
+- `first_search_ms`: deprecated alias of `total_cold_path_ms` for older runs
 
 Load raw CSV:
 
 ```text
-system,query,concurrency,request_id,success,status,latency_ms,error
+run_id,repeat,system,query,concurrency,request_id,success,status,latency_ms,error
+```
+
+Reference `hey` CSV:
+
+```text
+run_id,tool,system,query,concurrency,duration_seconds,request_rate,latency_p50_ms,latency_p95_ms,latency_p99_ms,success_count,error_count
 ```
 
 Memory raw CSV:
@@ -152,4 +193,6 @@ Memory raw CSV:
 system,phase,timestamp_ms,memory_bytes,source
 ```
 
-Processed summaries include sample counts, success/error counts, min, mean, median, p50, p95, p99, max, and request rate where applicable.
+Processed summaries include sample counts, success/error counts, min, mean,
+median, p50, p95, p99, max, standard deviation where applicable, and request
+rate plus repeat throughput variance for load runs.

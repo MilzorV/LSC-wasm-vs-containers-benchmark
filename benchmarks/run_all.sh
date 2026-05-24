@@ -50,13 +50,14 @@ trap cleanup EXIT
 
 echo "== Benchmarks =="
 if [[ "$PILOT" == "1" ]]; then
-  python3 "$ROOT_DIR/benchmarks/run_cold_start.py" --iterations 2 --include-first-search
-  python3 "$ROOT_DIR/benchmarks/run_load.py" --duration 3 --concurrency 2 --queries space,empty
-  python3 "$ROOT_DIR/benchmarks/run_memory.py" --idle-seconds 2 --load-seconds 3 --load-concurrency 2
+  python3 "$ROOT_DIR/benchmarks/run_cold_start.py" --iterations 2 --include-first-search --build-spin --build-oci
+  python3 "$ROOT_DIR/benchmarks/run_load.py" --duration 3 --concurrency 2 --queries space,empty --repeats 1 --build-spin --build-oci
+  python3 "$ROOT_DIR/benchmarks/run_memory.py" --idle-seconds 2 --load-seconds 3 --load-concurrency 2 --build-spin --build-oci
 else
-  python3 "$ROOT_DIR/benchmarks/run_cold_start.py" --include-first-search
-  python3 "$ROOT_DIR/benchmarks/run_load.py"
-  python3 "$ROOT_DIR/benchmarks/run_memory.py"
+  python3 "$ROOT_DIR/benchmarks/run_cold_start.py" --include-first-search --build-spin --build-oci
+  python3 "$ROOT_DIR/benchmarks/run_load.py" --repeats 3 --build-spin --build-oci
+  python3 "$ROOT_DIR/benchmarks/run_load_hey.py" --build-spin --build-oci || true
+  python3 "$ROOT_DIR/benchmarks/run_memory.py" --build-spin --build-oci
 fi
 
 echo "== Analysis =="

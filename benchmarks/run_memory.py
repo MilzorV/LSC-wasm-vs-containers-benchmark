@@ -13,12 +13,11 @@ from pathlib import Path
 
 from benchmark_lib import (
     RESULTS_RAW,
-    docker_container_memory_bytes,
     ensure_result_dirs,
     normalize_query,
     parse_csv_arg,
     post_search,
-    spin_process_tree_memory_bytes,
+    sample_memory_metrics,
     start_service,
     stop_service,
     timestamp_slug,
@@ -36,6 +35,7 @@ def main() -> int:
     parser.add_argument("--query", default="space")
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--build-oci", action="store_true")
+    parser.add_argument("--build-spin", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
@@ -53,7 +53,12 @@ def main() -> int:
 
         for system in systems:
             run_id = f"memory-{system}-{timestamp_slug()}"
-            service = start_service(system, run_id, build_oci=args.build_oci)
+            service = start_service(
+                system,
+                run_id,
+                build_oci=args.build_oci,
+                build_spin=args.build_spin,
+            )
             try:
                 wait_for_health(service.url, args.timeout)
                 post_search(service.url, "space", timeout=args.timeout)
@@ -132,30 +137,30 @@ def run_load_and_sample(
 
 
 def write_memory_sample(writer: csv.DictWriter, fh, service, phase: str) -> None:
-    memory_bytes, source = sample_memory(service)
-    if memory_bytes is None:
+    samples = sample_memory_metrics(service)
+    if not samples:
         print(f"[memory] skipped sample system={service.system} phase={phase}")
         return
-    writer.writerow(
-        {
-            "system": service.system,
-            "phase": phase,
-            "timestamp_ms": int(time.time() * 1000),
-            "memory_bytes": memory_bytes,
-            "source": source,
-        }
-    )
+    for sample in samples:
+        writer.writerow(
+            {
+                "system": service.system,
+                "phase": phase,
+                "timestamp_ms": int(time.time() * 1000),
+                "memory_bytes": sample.memory_bytes,
+                "source": sample.source,
+            }
+        )
     fh.flush()
 
 
-def sample_memory(service) -> tuple[int | None, str]:
-    if service.system == "spin":
-        if service.process is None:
-            return None, "host_process_rss"
-        return spin_process_tree_memory_bytes(service.process.pid), "host_process_rss"
-    if service.system == "oci":
-        return docker_container_memory_bytes(), "docker_stats"
-    return None, "unknown"
+def sample_memory(service):
+    """Backward-compatible helper for tests and older imports."""
+    samples = sample_memory_metrics(service)
+    if not samples:
+        return None, "unknown"
+    first = samples[0]
+    return first.memory_bytes, first.source
 
 
 if __name__ == "__main__":

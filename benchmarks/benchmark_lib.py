@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import signal
 import subprocess
 import time
@@ -62,7 +63,24 @@ def normalize_query(value: str) -> str:
     return "" if value in {"empty", '""'} else value
 
 
-def start_service(system: str, run_id: str, build_oci: bool = False) -> StartedService:
+def build_artifacts(*, spin: bool = True, oci: bool = True) -> None:
+    """Build Spin WASM and OCI Docker image before standalone benchmark runs."""
+    if spin:
+        run(["spin", "build"], cwd=SPIN_DIR)
+    if oci:
+        run(["docker", "compose", "build"], cwd=OCI_DIR)
+
+
+def start_service(
+    system: str,
+    run_id: str,
+    build_oci: bool = False,
+    build_spin: bool = False,
+) -> StartedService:
+    if build_spin and system == "spin":
+        build_artifacts(spin=True, oci=False)
+    if build_oci and system == "oci":
+        build_artifacts(spin=False, oci=True)
     if system == "spin":
         return start_spin(run_id)
     if system == "oci":
@@ -266,6 +284,79 @@ def docker_container_memory_bytes() -> int | None:
         return None
     usage = result.stdout.strip().split("/", 1)[0].strip()
     return parse_memory_size(usage)
+
+
+def oci_container_host_rss_bytes() -> int | None:
+    """Host RSS for the OCI container process tree (comparable to Spin host_process_rss)."""
+    result = subprocess.run(
+        ["docker", "inspect", "-f", "{{.State.Pid}}", OCI_CONTAINER],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    pid_text = result.stdout.strip()
+    if not pid_text.isdigit():
+        return None
+    pid = int(pid_text)
+    if pid <= 0:
+        return None
+    return spin_process_tree_memory_bytes(pid)
+
+
+@dataclass(frozen=True)
+class MemorySample:
+    memory_bytes: int
+    source: str
+
+
+def sample_memory_metrics(service: StartedService) -> list[MemorySample]:
+    """Return one or more memory samples. Primary sources differ by runtime; host RSS is comparable."""
+    if service.system == "spin":
+        if service.process is None:
+            return []
+        memory = spin_process_tree_memory_bytes(service.process.pid)
+        if memory is None:
+            return []
+        return [MemorySample(memory, "host_process_rss")]
+    if service.system == "oci":
+        samples: list[MemorySample] = []
+        docker_bytes = docker_container_memory_bytes()
+        if docker_bytes is not None:
+            samples.append(MemorySample(docker_bytes, "docker_stats"))
+        host_bytes = oci_container_host_rss_bytes()
+        if host_bytes is not None:
+            samples.append(MemorySample(host_bytes, "host_process_rss"))
+        return samples
+    return []
+
+
+def find_hey() -> str | None:
+    return shutil.which("hey")
+
+
+def latest_raw_files(prefix: str) -> list[Path]:
+    """Return raw CSV paths for the latest benchmark run id embedded in filenames."""
+    pattern = f"{prefix}_*.csv"
+    paths = sorted(RESULTS_RAW.glob(pattern))
+    if not paths:
+        return []
+    run_ids = {extract_run_id(path, prefix) for path in paths}
+    latest = max(run_ids)
+    return [path for path in paths if extract_run_id(path, prefix) == latest]
+
+
+def extract_run_id(path: Path, prefix: str) -> str:
+    stem = path.stem
+    expected = f"{prefix}_"
+    if not stem.startswith(expected):
+        return stem
+    remainder = stem[len(expected) :]
+    if "_r" in remainder:
+        return remainder.rsplit("_r", 1)[0]
+    return remainder
 
 
 def parse_memory_size(value: str) -> int | None:
