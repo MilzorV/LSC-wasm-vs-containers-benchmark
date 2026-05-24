@@ -107,7 +107,7 @@ The benchmark scripts should measure:
 - cold start to first successful `/health`;
 - optional cold start plus first successful `/search`;
 - search throughput for `POST /search` with `{"q":"space"}`;
-- placeholder search throughput for `POST /search` with `{"q":""}`;
+- empty-query throughput for `POST /search` with `{"q":""}`;
 - idle and under-load memory for both systems;
 - latency percentiles p50, p95, p99;
 - error counts and response validation.

@@ -80,7 +80,7 @@ We now compare the same browser entrypoint plus the same benchmark API surface:
 - browser dashboard at `/` on both Spin and OCI;
 - cold start to first successful `/health`;
 - search throughput for `POST /indexes/movies/search` with `{"q":"space"}`;
-- placeholder search throughput for `POST /indexes/movies/search` with `{"q":""}`;
+- empty-query throughput for `POST /indexes/movies/search` with `{"q":""}`;
 - document browsing via `GET /indexes/movies/documents`;
 - memory at idle and under load;
 - latency percentiles p50, p95, p99;

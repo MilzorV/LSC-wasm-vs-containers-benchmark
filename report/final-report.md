@@ -1,128 +1,58 @@
-# Movie Search on Spin/wasmtime vs OCI
+# Raport Końcowy: Movie Search na Spin/WASM vs OCI
 
-## Summary
+Właściwym raportem końcowym jest wersja LaTeX:
 
-This project evaluates whether WebAssembly microservices running through Spin/wasmtime are a practical serverless isolation substrate compared with an equivalent OCI container. The benchmark application is a deterministic movie-search HTTP service implemented once in Rust and exposed through two adapters:
+- źródło: `report/final-report.tex`;
+- PDF do oddania: `report/final-report.pdf`.
 
-- Spin/WASI HTTP component;
-- native Rust HTTP server packaged as an OCI container.
+Ten plik Markdown pełni rolę krótkiego indeksu i streszczenia pakietu.
 
-The benchmark intentionally uses one shared `movie-search-core` crate in both runtimes so performance differences are attributable to the runtime and isolation model rather than application logic differences.
+## Zakres
 
-## Pivot From Meilisearch
+Projekt porównuje ten sam mikroserwis HTTP `movie-search` w dwóch modelach
+izolacji:
 
-The project initially investigated running upstream Meilisearch on Spin. That path was not suitable for a same-application benchmark within the project timeline because upstream Meilisearch depends on native runtime layers and storage assumptions such as LMDB/heed and memory-mapped files. The Spin implementation available at that stage was a custom fallback with different ranking semantics, so comparing its search results with official Meilisearch would not have been honest.
+- Spin/wasmtime jako komponent WASI HTTP;
+- natywny serwer Rust uruchamiany w kontenerze OCI.
 
-The Meilisearch feasibility evidence is preserved in `docs/upstream-wasi-blockers.md`.
+Porzucono próbę bezpośredniego porównania z Meilisearch, ponieważ oficjalny
+Meilisearch opiera się na LMDB, memory-mapped storage i natywnych założeniach
+runtime, których nie dało się przenieść 1:1 do Spin/WASI w ramach projektu.
 
-## Implementation Architecture
+## Finalne Artefakty
 
-Both services embed the same `fixtures/movies.json` file with 44,471 deduplicated movie records. The shared core owns:
+- Raport: `report/final-report.pdf`.
+- Prezentacja edytowalna: `presentation/movie-search-spin-vs-oci.pptx`.
+- Prezentacja PDF: `presentation/movie-search-spin-vs-oci.pdf`.
+- Demo: `demo/demo-script.md`.
+- Wyniki surowe: `results/raw/`.
+- Wyniki przetworzone: `results/processed/`.
+- Wykresy: `results/plots/`.
 
-- loading and deduplication by `id`;
-- query tokenization;
-- deterministic substring matching;
-- ranking by matched token count, field priority, and `id`;
-- response types for health, version, stats, listing, and search.
+## Najważniejsze Wyniki
 
-The shared API surface is:
+- Parytet funkcjonalny: Spin i OCI zwracają te same `hit.id` dla zapytań
+  `space`, `toy story`, `dark knight`, `romance` i pustego zapytania.
+- Cold start `/health` p95: OCI `28.420 ms`, Spin `144.220 ms`.
+- Cold start + pierwszy `/search` p95: OCI `376.983 ms`, Spin `217.504 ms`.
+- Empty query, concurrency 10: OCI `3314.9 req/s`, Spin `132.8 req/s`.
+- Query `space`, concurrency 10: OCI `54.0 req/s`, Spin `77.2 req/s`.
+- Memory load max: OCI `31.9 MiB` przez `docker stats`, Spin `493.5 MiB`
+  jako host process RSS.
 
-```text
-GET  /health
-GET  /version
-GET  /stats
-GET  /movies?offset=&limit=
-POST /search
-```
+## Reprodukcja
 
-## Functional Parity Evidence
-
-Before collecting performance data, both services must pass:
-
-```bash
-cargo test --manifest-path spin-meili/Cargo.toml
-cd spin-meili && spin build
-benchmarks/smoke_spin.sh
-benchmarks/smoke_oci.sh
-benchmarks/compare_results.sh
-```
-
-`compare_results.sh` validates matching engine identity, document count, total hits, and hit IDs for representative queries including `space`, `toy story`, `dark knight`, `romance`, and an empty query.
-
-## Benchmark Methodology
-
-The benchmark harness records:
-
-- cold start to first successful `/health`;
-- optional cold start plus first successful `/search`;
-- throughput and latency for `POST /search`;
-- idle and under-load memory samples.
-
-Raw CSVs are written to `results/raw`, processed summaries to `results/processed`, and plots to `results/plots`.
-
-Full benchmark command:
+Pełny benchmark:
 
 ```bash
 benchmarks/run_all.sh
 ```
 
-Pilot command:
+Kompilacja raportu:
 
 ```bash
-benchmarks/run_all.sh --pilot
+latexmk -pdf -outdir=report -interaction=nonstopmode -halt-on-error report/final-report.tex
 ```
 
-## Cold-Start Results
-
-Populate this section from:
-
-- `results/processed/cold_start_summary.csv`
-- `results/plots/cold_start_p95.png`
-
-Discuss min, median, p95, and failures for Spin and OCI. Build time is excluded; Docker image build is completed before cold-start measurements.
-
-## Throughput And Latency Results
-
-Populate this section from:
-
-- `results/processed/load_summary.csv`
-- `results/plots/load_latency_p95.png`
-- `results/plots/load_throughput.png`
-
-Discuss request rate and p50/p95/p99 latency for `space` and empty-query scenarios at concurrency `10`, `50`, `100`, and `200`.
-
-## Memory And Isolation Results
-
-Populate this section from:
-
-- `results/processed/memory_summary.csv`
-- `results/plots/memory_peak.png`
-
-Interpret memory numbers carefully. OCI memory is sampled through Docker/container metrics, while Spin memory is sampled from the host process tree RSS. These are useful for comparing observed overhead, but they are not identical measurement surfaces.
-
-The qualitative isolation comparison should cover:
-
-- OCI process/container isolation and cgroup resource accounting;
-- Spin/WASI capability-oriented sandboxing;
-- startup and deployment shape differences;
-- operational tradeoffs for read-heavy microservices.
-
-## Meilisearch Feasibility Appendix
-
-The earlier Meilisearch feasibility work found that:
-
-- small upstream crates such as `flatten-serde-json` and `filter-parser` compiled for `wasm32-wasip2`;
-- higher layers failed through dependencies such as `ring`, Tokio wasm feature constraints, and expected deeper storage blockers;
-- LMDB/heed and memory-mapped storage assumptions make a faithful Spin port non-trivial.
-
-This supports the project pivot: the final benchmark compares the same movie-search application across runtimes, while Meilisearch remains an evidence-backed feasibility case study.
-
-## Conclusion
-
-Populate this section after final benchmark collection. Answer:
-
-- whether Spin and OCI produced identical functional results;
-- which runtime started faster;
-- which runtime had better throughput and tail latency;
-- how memory overhead differed;
-- whether Spin/wasmtime looks practical for this class of microservice.
+Demo prezentacyjne opisuje `demo/demo-script.md`. Demo nie uruchamia pełnego
+benchmarku na żywo; pokazuje parytet funkcjonalny i finalne artefakty wyników.

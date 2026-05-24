@@ -141,6 +141,6 @@ The repository must provide and keep passing:
 - Canonical fixture and source data notes.
 - Smoke and parity scripts.
 - Benchmark scripts and raw CSV outputs.
-- Processed tables, plots, and final report.
+- Processed tables, plots, LaTeX/PDF final report, presentation, and demo script.
 - Reproducibility instructions in `README.md` and `docs/METHODOLOGY.md`.
 - Historical Meilisearch feasibility notes explaining why the service changed.

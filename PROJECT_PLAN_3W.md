@@ -59,12 +59,13 @@ This plan implements [requirements.md](requirements.md). The project now compare
 
 ## Acceptance Checklist
 
-- [ ] Spin service runs locally.
-- [ ] OCI service runs locally.
-- [ ] Both use the same `movie-search-core`.
-- [ ] Both embed the same `fixtures/movies.json`.
-- [ ] `/stats.documentCount` is `44,471` in both runtimes.
-- [ ] Smoke scripts pass.
-- [ ] Result-parity script passes.
-- [ ] Benchmark CSVs and plots are produced.
-- [ ] Final report distinguishes the movie-search benchmark from historical Meilisearch feasibility evidence.
+- [x] Spin service runs locally.
+- [x] OCI service runs locally.
+- [x] Both use the same `movie-search-core`.
+- [x] Both embed the same `fixtures/movies.json`.
+- [x] `/stats.documentCount` is `44,471` in both runtimes.
+- [x] Smoke scripts pass.
+- [x] Result-parity script passes.
+- [x] Benchmark CSVs and plots are produced.
+- [x] Final report distinguishes the movie-search benchmark from historical Meilisearch feasibility evidence.
+- [x] Final LaTeX report, presentation, and demo script are available for submission.
