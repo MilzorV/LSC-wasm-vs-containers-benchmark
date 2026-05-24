@@ -1,5 +1,5 @@
 system,scenario,metric,samples,success_count,error_count,min,mean,median,p50,p95,p99,max
-oci,health_plus_search,ready_ms,2,2,0,19.715,25.566,25.566,19.715,31.417,31.417,31.417
-oci,health_plus_search,first_search_ms,2,2,0,292.848,346.530,346.530,292.848,400.212,400.212,400.212
-spin,health_plus_search,ready_ms,2,2,0,137.474,145.872,145.872,137.474,154.270,154.270,154.270
-spin,health_plus_search,first_search_ms,2,2,0,202.074,210.313,210.313,202.074,218.552,218.552,218.552
+oci,health_plus_search,ready_ms,20,20,0,18.263,22.116,20.982,20.907,28.420,36.325,36.325
+oci,health_plus_search,first_search_ms,20,20,0,286.068,324.995,307.755,302.265,376.983,446.288,446.288
+spin,health_plus_search,ready_ms,20,20,0,132.154,140.665,141.357,141.230,144.220,152.354,152.354
+spin,health_plus_search,first_search_ms,20,20,0,195.613,206.071,205.649,205.445,217.504,218.947,218.947

@@ -126,7 +126,9 @@ Outputs:
 - raw CSVs and service logs: `results/raw/`;
 - summary CSVs: `results/processed/`;
 - plots: `results/plots/`;
-- report draft: `report/final-report.md`.
+- LaTeX report source/PDF: `report/final-report.tex`, `report/final-report.pdf`;
+- presentation: `presentation/movie-search-spin-vs-oci.pptx`, `presentation/movie-search-spin-vs-oci.pdf`;
+- demo script: `demo/demo-script.md`.
 
 Individual runners are also available:
 

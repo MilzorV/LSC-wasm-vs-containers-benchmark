@@ -4,9 +4,9 @@ This file captures the local environment for final benchmark collection. Re-reco
 
 | Item | Value |
 |---|---|
-| Date recorded | 2026-05-24 03:38:35 CEST |
-| OS | Darwin 24.6.0 arm64 |
-| Kernel | Darwin Kernel Version 24.6.0 |
+| Date recorded | 2026-05-24 04:36:43 CEST |
+| OS | macOS 15.6, Darwin 24.6.0 arm64 |
+| Kernel | Darwin Kernel Version 24.6.0: Mon Jul 14 11:30:40 PDT 2025; root:xnu-11417.140.69~1/RELEASE_ARM64_T8132 |
 | Hostname | Miloszs-MacBook-Air.local |
 | CPU | Apple M4 |
 | CPU cores | 10 physical / 10 logical |
@@ -19,11 +19,19 @@ This file captures the local environment for final benchmark collection. Re-reco
 | Docker Compose | `Docker Compose version v2.40.2-desktop.1` |
 | Python | `Python 3.12.7` |
 | Matplotlib | `3.10.8` |
-| Git base commit | `e028269` |
-| Benchmark code state | working tree includes local benchmark harness changes until committed |
+| Git commit benchmarked | `5ccaf5b` |
+| Benchmark code state | working tree contains refreshed final result artifacts and report/deck work |
 | OCI image | local `lsc-movie-search-oci:latest` |
 | Shared core | `movie-search-core` |
 | Fixture | `fixtures/movies.json`, 44,471 documents |
+
+## Final Benchmark Artifacts
+
+- Cold start raw CSV: `results/raw/cold_start_20260524-042516.csv`.
+- Load raw CSV: `results/raw/load_20260524-042555.csv`.
+- Memory raw CSV: `results/raw/memory_20260524-043412.csv`.
+- Processed summaries: `results/processed/*.csv`.
+- Plots: `results/plots/*.png`.
 
 ## Historical Verification Artifacts
 

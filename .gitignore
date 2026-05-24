@@ -2,9 +2,15 @@
 .env
 __pycache__/
 *.pyc
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
 target/
 spin-meili/target/
 spin-meili/.spin/
+outputs/
 meili_data/
 vendor/meilisearch/
 docs/upstream-native-check.log
