@@ -1,38 +1,34 @@
 # Environment Record
 
-This file captures local tool versions observed during the Week 1 scaffold and later movie-search pivot. Re-record these values before collecting final benchmark results.
+This file captures the local environment for final benchmark collection. Re-record these values before publishing final numbers.
 
 | Item | Value |
 |---|---|
-| Date | 2026-05-11 |
+| Date recorded | 2026-05-24 03:38:35 CEST |
 | OS | Darwin 24.6.0 arm64 |
+| Kernel | Darwin Kernel Version 24.6.0 |
 | Hostname | Miloszs-MacBook-Air.local |
-| CPU | Not captured in sandbox (`sysctl` denied) |
-| RAM | Not captured in sandbox (`sysctl` denied) |
+| CPU | Apple M4 |
+| CPU cores | 10 physical / 10 logical |
+| RAM | 24 GiB |
+| Power mode | macOS low power mode off (`lowpowermode 0`) |
 | Rust stable | `rustc 1.95.0 (59807616e 2026-04-14)` |
-| Upstream Rust toolchain | `1.91.1-aarch64-apple-darwin` installed by upstream Meilisearch |
 | Installed WASI target | `wasm32-wasip2` |
 | Spin | `spin 3.6.3 (88d51cf 2026-04-09)` |
 | Docker | `Docker version 28.5.1, build e180ab8` |
 | Docker Compose | `Docker Compose version v2.40.2-desktop.1` |
 | Python | `Python 3.12.7` |
+| Matplotlib | `3.10.8` |
+| Git base commit | `e028269` |
+| Benchmark code state | working tree includes local benchmark harness changes until committed |
 | OCI image | local `lsc-movie-search-oci:latest` |
 | Shared core | `movie-search-core` |
 | Fixture | `fixtures/movies.json`, 44,471 documents |
-| Historical upstream source tag | `v1.43.0` |
-| Historical upstream source commit | `475ed56e5612df0dbb826748add5f93e0e7d5500` |
-| Git base commit at scaffold time | `f968ad9` |
 
-## Verification artifacts
+## Historical Verification Artifacts
 
-- Native upstream check log: `docs/upstream-native-check.log` (ignored by Git).
-- Layered WASI report: `docs/upstream-wasi-blockers.md` (tracked).
-- Per-package WASI logs: `docs/upstream-wasi-check-*.log` (ignored by Git).
+- Native upstream Meilisearch check log: `docs/upstream-native-check.log`.
+- Layered WASI report: `docs/upstream-wasi-blockers.md`.
+- Per-package WASI logs: `docs/upstream-wasi-check-*.log`.
 
-Before Week 2 benchmark collection, update this file with:
-
-- exact CPU model and core count;
-- RAM;
-- power/performance mode;
-- Git commit SHA of the benchmarked code;
-- whether the benchmark used the shared movie-search service or a historical Meilisearch feasibility run.
+These are retained as evidence for the earlier Meilisearch feasibility path, not as the primary movie-search benchmark.

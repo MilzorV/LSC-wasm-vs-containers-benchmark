@@ -115,3 +115,41 @@ The benchmark scripts should measure:
 Required concurrency levels are `10`, `50`, `100`, and `200`.
 
 Memory metrics are not perfectly symmetric across Spin and OCI. The report must state this clearly and identify whether a metric comes from Docker/cgroup data or host process sampling.
+
+## Benchmark Scripts
+
+Run a short pilot:
+
+```bash
+benchmarks/run_all.sh --pilot
+```
+
+Run the full benchmark:
+
+```bash
+benchmarks/run_all.sh
+```
+
+Raw outputs are written to `results/raw`, processed summaries to `results/processed`, and plots to `results/plots`.
+
+## Result File Contracts
+
+Cold start raw CSV:
+
+```text
+system,scenario,iteration,success,ready_ms,first_search_ms,error
+```
+
+Load raw CSV:
+
+```text
+system,query,concurrency,request_id,success,status,latency_ms,error
+```
+
+Memory raw CSV:
+
+```text
+system,phase,timestamp_ms,memory_bytes,source
+```
+
+Processed summaries include sample counts, success/error counts, min, mean, median, p50, p95, p99, max, and request rate where applicable.

@@ -1,0 +1,5 @@
+system,scenario,iteration,success,ready_ms,first_search_ms,error
+spin,health_plus_search,1,true,154.270,218.552,
+spin,health_plus_search,2,true,137.474,202.074,
+oci,health_plus_search,1,true,31.417,400.212,
+oci,health_plus_search,2,true,19.715,292.848,

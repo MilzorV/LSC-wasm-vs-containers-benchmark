@@ -1,0 +1,5 @@
+system,scenario,metric,samples,success_count,error_count,min,mean,median,p50,p95,p99,max
+oci,health_plus_search,ready_ms,2,2,0,19.715,25.566,25.566,19.715,31.417,31.417,31.417
+oci,health_plus_search,first_search_ms,2,2,0,292.848,346.530,346.530,292.848,400.212,400.212,400.212
+spin,health_plus_search,ready_ms,2,2,0,137.474,145.872,145.872,137.474,154.270,154.270,154.270
+spin,health_plus_search,first_search_ms,2,2,0,202.074,210.313,210.313,202.074,218.552,218.552,218.552

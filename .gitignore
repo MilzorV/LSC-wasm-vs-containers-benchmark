@@ -1,5 +1,7 @@
 .DS_Store
 .env
+__pycache__/
+*.pyc
 target/
 spin-meili/target/
 spin-meili/.spin/
@@ -8,3 +10,4 @@ vendor/meilisearch/
 docs/upstream-native-check.log
 docs/upstream-wasi-check.log
 docs/upstream-wasi-check-*.log
+results/raw/*.log

@@ -105,6 +105,38 @@ The comparison script validates that Spin and OCI return the same engine name, s
 - `romance`
 - empty query
 
+## Run Benchmarks
+
+For a quick end-to-end pilot:
+
+```bash
+benchmarks/run_all.sh --pilot
+```
+
+For the full benchmark plan:
+
+```bash
+benchmarks/run_all.sh
+```
+
+The full run builds both runtimes, runs smoke/parity checks, collects cold-start, load, and memory samples, then generates processed summaries and plots.
+
+Outputs:
+
+- raw CSVs and service logs: `results/raw/`;
+- summary CSVs: `results/processed/`;
+- plots: `results/plots/`;
+- report draft: `report/final-report.md`.
+
+Individual runners are also available:
+
+```bash
+benchmarks/run_cold_start.py --include-first-search
+benchmarks/run_load.py
+benchmarks/run_memory.py
+benchmarks/analyze_results.py
+```
+
 ## Historical Meilisearch Checks
 
 The repository still contains scripts for the earlier feasibility investigation:

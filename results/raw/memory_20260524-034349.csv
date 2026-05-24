@@ -1,0 +1,9 @@
+system,phase,timestamp_ms,memory_bytes,source
+spin,idle,1779587029426,110084096,host_process_rss
+spin,idle,1779587030455,110084096,host_process_rss
+spin,load,1779587031506,152240128,host_process_rss
+spin,load,1779587032529,202440704,host_process_rss
+spin,load,1779587033545,156942336,host_process_rss
+oci,idle,1779587036497,31226593,docker_stats
+oci,load,1779587039076,32107397,docker_stats
+oci,load,1779587041608,31939624,docker_stats

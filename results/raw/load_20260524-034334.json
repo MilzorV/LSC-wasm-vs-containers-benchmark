@@ -1,0 +1,17 @@
+{
+  "kind": "load",
+  "generated_at": "2026-05-24T01:43:49Z",
+  "duration_seconds": 3.0,
+  "systems": [
+    "spin",
+    "oci"
+  ],
+  "queries": [
+    "space",
+    ""
+  ],
+  "concurrency": [
+    2
+  ],
+  "limit": 10
+}
