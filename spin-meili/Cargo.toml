@@ -3,6 +3,8 @@ resolver = "2"
 members = [
     "crates/legacy-subset-core",
     "crates/meili-wasi-compat",
+    "crates/oci-http-adapter",
+    "crates/search-core",
     "crates/storage-memory",
     "crates/spin-http-adapter",
 ]
@@ -19,6 +21,8 @@ anyhow = "1"
 meili-spin-legacy-subset-core = { path = "crates/legacy-subset-core" }
 meili-wasi-compat = { path = "crates/meili-wasi-compat" }
 meili-spin-storage-memory = { path = "crates/storage-memory" }
+movie-search-core = { path = "crates/search-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 spin-sdk = "5.2.0"
+tiny_http = "0.12"

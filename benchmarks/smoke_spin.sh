@@ -1,36 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SPIN_URL="${SPIN_URL:-http://127.0.0.1:8080}"
-INDEX_UID="${INDEX_UID:-movies}"
-FIXTURE="${FIXTURE:-$ROOT_DIR/fixtures/documents.json}"
-MEILI_MASTER_KEY="${MEILI_MASTER_KEY:-MASTER_KEY}"
 
-auth_header="Authorization: Bearer $MEILI_MASTER_KEY"
-
-echo "Checking Spin health at $SPIN_URL/health"
+echo "Checking Spin movie-search health at $SPIN_URL/health"
 curl -fsS "$SPIN_URL/health"
 echo
 
-echo "Loading fixture into Spin index '$INDEX_UID'"
-curl -fsS \
-  -X POST "$SPIN_URL/indexes/$INDEX_UID/documents" \
-  -H "$auth_header" \
-  -H "content-type: application/json" \
-  --data-binary "@$FIXTURE"
+echo "Checking Spin movie-search version"
+curl -fsS "$SPIN_URL/version"
 echo
 
-echo "Searching Spin index '$INDEX_UID' for 'space'"
-curl -fsS \
-  -X POST "$SPIN_URL/indexes/$INDEX_UID/search" \
-  -H "$auth_header" \
-  -H "content-type: application/json" \
-  --data '{"q":"space","limit":3}'
-echo
+echo "Checking Spin movie-search stats"
+stats_response="$(curl -fsS "$SPIN_URL/stats")"
+echo "$stats_response"
+printf '%s' "$stats_response" | python3 -c '
+import json, sys
+stats = json.load(sys.stdin)
+assert stats["documentCount"] == 44471, stats
+'
 
-echo "Listing Spin documents for dashboard parity"
-curl -fsS \
-  "$SPIN_URL/indexes/$INDEX_UID/documents?limit=2" \
-  -H "$auth_header"
+echo "Searching Spin movie-search for 'space'"
+search_response="$(
+  curl -fsS \
+    -X POST "$SPIN_URL/search" \
+    -H "content-type: application/json" \
+    --data '{"q":"space","limit":3}'
+)"
+echo "$search_response"
+printf '%s' "$search_response" | python3 -c '
+import json, sys
+response = json.load(sys.stdin)
+assert response["query"] == "space", response
+assert len(response["hits"]) == 3, response
+print("hit ids:", ",".join(str(hit["id"]) for hit in response["hits"]))
+'
+
+echo "Listing Spin movies"
+curl -fsS "$SPIN_URL/movies?limit=2"
 echo

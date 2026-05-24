@@ -1,10 +1,11 @@
 # Fixture Data
 
-`documents.json` is the Week 1 shared benchmark fixture for both implementations.
+`movies.json` is the canonical benchmark fixture for both Spin and OCI.
 
-- Index UID: `movies`
+- Documents: `44,471`
 - Primary key: `id`
 - Fields: `id`, `title`, `overview`, `genre`, `year`
-- Smoke query: `space`
+- Source data: `movies_metadata.csv`
+- Deduplication rule: last record wins for duplicate `id` values
 
-The fixture is intentionally small for smoke checks. Week 2 may add a deterministic generator or a larger fixture for benchmark campaigns.
+`movies_metadata.csv` is retained as the raw source export. Runtime services should load `movies.json`, not the CSV.

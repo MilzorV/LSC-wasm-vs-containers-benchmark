@@ -3,10 +3,10 @@
 spin_manifest_version = 2
 
 [application]
-name = "meili-spin-port"
+name = "movie-search-spin"
 version = "0.1.0"
 authors = ["Milosz Slowinski <slowinski.milosz@gmail.com>"]
-description = "Spin/wasmtime Meilisearch porting adapter with a legacy subset fallback."
+description = "Spin/wasmtime adapter for the shared movie-search benchmark service."
 
 [[trigger.http]]
 route = "/..."
@@ -15,14 +15,7 @@ component = "api"
 [component.api]
 source = "target/wasm32-wasip2/release/spin_http_adapter.wasm"
 allowed_outbound_hosts = []
-key_value_stores = ["default"]
-
-[variables]
-meili_master_key = { default = "MASTER_KEY" }
-
-[component.api.variables]
-meili_master_key = "{{ meili_master_key }}"
 
 [component.api.build]
 command = "cargo build --target wasm32-wasip2 --release -p spin-http-adapter"
-watch = ["Cargo.toml", "crates/**/*.rs", "static/mini-dashboard/**/*"]
+watch = ["Cargo.toml", "crates/**/*.rs", "../fixtures/movies.json"]

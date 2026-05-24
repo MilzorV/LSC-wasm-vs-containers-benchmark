@@ -1,6 +1,6 @@
 # Environment Record
 
-This file captures local tool versions observed during the Week 1 scaffold and upstream-port pivot. Re-record these values before collecting final benchmark results.
+This file captures local tool versions observed during the Week 1 scaffold and later movie-search pivot. Re-record these values before collecting final benchmark results.
 
 | Item | Value |
 |---|---|
@@ -16,9 +16,11 @@ This file captures local tool versions observed during the Week 1 scaffold and u
 | Docker | `Docker version 28.5.1, build e180ab8` |
 | Docker Compose | `Docker Compose version v2.40.2-desktop.1` |
 | Python | `Python 3.12.7` |
-| Meilisearch OCI image | `getmeili/meilisearch:v1.43.0` |
-| Upstream source tag | `v1.43.0` |
-| Upstream source commit | `475ed56e5612df0dbb826748add5f93e0e7d5500` |
+| OCI image | local `lsc-movie-search-oci:latest` |
+| Shared core | `movie-search-core` |
+| Fixture | `fixtures/movies.json`, 44,471 documents |
+| Historical upstream source tag | `v1.43.0` |
+| Historical upstream source commit | `475ed56e5612df0dbb826748add5f93e0e7d5500` |
 | Git base commit at scaffold time | `f968ad9` |
 
 ## Verification artifacts
@@ -33,4 +35,4 @@ Before Week 2 benchmark collection, update this file with:
 - RAM;
 - power/performance mode;
 - Git commit SHA of the benchmarked code;
-- whether the Spin benchmark uses full upstream, partial upstream, or the legacy subset fallback.
+- whether the benchmark used the shared movie-search service or a historical Meilisearch feasibility run.

@@ -1,5 +1,7 @@
 # Teacher Consultation Notes
 
+> Current note: the project has since pivoted to a shared `movie-search-core` service for the actual Spin-vs-OCI benchmark. The Meilisearch notes below are retained as the technical reason for that pivot.
+
 Date: 2026-05-11
 
 ## Project topic

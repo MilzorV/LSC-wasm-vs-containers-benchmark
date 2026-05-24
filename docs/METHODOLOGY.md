@@ -1,90 +1,73 @@
 # Methodology
 
-## Current comparison model
+## Current Comparison Model
 
-The project now separates **porting feasibility** from **runtime benchmarking**.
+The project compares one application implemented once and exposed through two runtime adapters.
 
 | System | URL | Purpose |
 |---|---|---|
-| Spin/wasmtime | `http://127.0.0.1:8080` | Wasm implementation under test; serves the same mini-dashboard as OCI and currently backs it with the legacy subset fallback |
-| OCI Meilisearch | `http://127.0.0.1:8081` | Official native baseline, `getmeili/meilisearch:v1.43.0` |
+| Spin/wasmtime | `http://127.0.0.1:8080` | WASI HTTP component using `movie-search-core` |
+| OCI | `http://127.0.0.1:8081` | Native Rust HTTP server using `movie-search-core` |
 
-The goal is to move as much Spin behavior as possible onto upstream Meilisearch `v1.43.0` source. If that is blocked, the report must state the exact blocker and label any fallback benchmark results accordingly.
-
-## Upstream feasibility checks
-
-Fetch pinned source:
-
-```bash
-scripts/fetch-meilisearch.sh
-```
-
-Check native upstream buildability:
-
-```bash
-scripts/check-upstream-native.sh
-```
-
-Check selected upstream crates for `wasm32-wasip2`:
-
-```bash
-scripts/check-upstream-wasi.sh
-```
-
-The WASI report is [upstream-wasi-blockers.md](upstream-wasi-blockers.md). The current result is:
-
-- `flatten-serde-json`: passes for `wasm32-wasip2`;
-- `filter-parser`: passes for `wasm32-wasip2`;
-- `milli`: fails before storage integration because dependencies such as `ring` do not build cleanly for this target in the current setup;
-- `meilisearch-types`, `routes`, and `meilisearch`: fail through runtime/dependency layers including Tokio wasm feature constraints.
-
-LMDB/heed and memory-mapped storage remain expected deeper blockers even after the current crypto/runtime build blockers are addressed.
+This replaces the earlier Meilisearch comparison. That path remains documented in [upstream-wasi-blockers.md](upstream-wasi-blockers.md), but it is not the main benchmark because the Spin fallback and official Meilisearch did not share storage or ranking semantics.
 
 ## Fixture
 
-The shared fixture is `fixtures/documents.json`.
+The shared fixture is `fixtures/movies.json`.
 
-- Index UID: `movies`
+- Documents: `44,471`
 - Primary key: `id`
 - Fields: `id`, `title`, `overview`, `genre`, `year`
-- Smoke query: `space`
+- Deduplication: last-write-wins by `id`
 
-The OCI baseline uses native Meilisearch task processing. The current Spin fallback stores state through Spin's default key-value store under `spin-meili/.spin/sqlite_key_value.db`.
+The raw CSV source remains in `fixtures/movies_metadata.csv`.
 
-Both dashboards use the same demo API key:
+## Shared API Surface
 
-```text
-MASTER_KEY
-```
-
-## Benchmark API surface
-
-The benchmark surface is intentionally narrow:
+Both runtimes expose the same endpoints:
 
 - `GET /health`
 - `GET /version`
-- `GET /indexes`
-- `POST /indexes/{uid}/documents`
-- `POST /indexes/{uid}/search`
 - `GET /stats`
-- `GET /tasks`
+- `GET /movies?offset=&limit=`
+- `POST /search`
 
-For browser mirror testing, Spin also implements dashboard-compatible document browsing and settings routes:
+Search request body:
 
-- `GET /`
-- `GET /assets/index-dDwzADMz.js`
-- `GET /indexes/{uid}`
-- `GET /indexes/{uid}/documents`
-- `POST /indexes/{uid}/documents/fetch`
-- `GET /indexes/{uid}/stats`
-- `GET /indexes/{uid}/settings`
-- `PATCH /indexes/{uid}/settings`
+```json
+{"q":"space","offset":0,"limit":20}
+```
 
-Benchmark scripts should use the same fixture, index UID, primary key, and search request JSON for both systems. If Spin cannot exactly match native Meilisearch response fields, scripts should validate stable comparable fields such as hit IDs, hit count, status, and error rate.
+Search responses include:
 
-## Week 1 acceptance checks
+```json
+{
+  "hits": [],
+  "query": "space",
+  "offset": 0,
+  "limit": 20,
+  "estimatedTotalHits": 0,
+  "processingTimeMs": 0
+}
+```
 
-Spin fallback:
+`processingTimeMs` is not used for parity checks because it naturally varies by runtime and request.
+
+## Search Semantics
+
+The ranking is intentionally simple and deterministic:
+
+1. tokenize the query on non-alphanumeric characters;
+2. match tokens by case-insensitive substring search;
+3. sort by number of matched query tokens descending;
+4. break ties by field weight, with `title > genre > overview`;
+5. break remaining ties by ascending `id`.
+
+Empty queries return all documents by ascending `id`.
+
+## Acceptance Checks
+
+Spin:
 
 ```bash
 cd spin-meili
@@ -92,25 +75,17 @@ spin build
 spin up --listen 127.0.0.1:8080
 ```
 
-From another shell:
+From the repository root:
 
 ```bash
 benchmarks/smoke_spin.sh
 ```
 
-Browser mirror:
-
-```text
-http://127.0.0.1:8080/
-```
-
-Enter `MASTER_KEY`, then browse the `movies` index and search for `space`.
-
 OCI:
 
 ```bash
-cd oci-meilisearch
-docker compose up -d
+cd oci-movie-search
+docker compose up --build
 ```
 
 From the repository root:
@@ -119,39 +94,24 @@ From the repository root:
 benchmarks/smoke_oci.sh
 ```
 
-Native browser baseline:
-
-```text
-http://127.0.0.1:8081/
-```
-
-Reset OCI state:
+With both services running:
 
 ```bash
-cd oci-meilisearch
-docker compose down -v
+benchmarks/compare_results.sh
 ```
 
-## Benchmark surface for Week 2
+## Benchmark Surface
 
 The benchmark scripts should measure:
 
 - cold start to first successful `/health`;
-- optional cold start plus fixture load plus first successful search;
-- search throughput for `POST /indexes/movies/search` with `{"q":"space"}`;
-- placeholder search throughput for `POST /indexes/movies/search` with `{"q":""}`;
+- optional cold start plus first successful `/search`;
+- search throughput for `POST /search` with `{"q":"space"}`;
+- placeholder search throughput for `POST /search` with `{"q":""}`;
 - idle and under-load memory for both systems;
 - latency percentiles p50, p95, p99;
 - error counts and response validation.
 
 Required concurrency levels are `10`, `50`, `100`, and `200`.
 
-## Interpretation rule
-
-Results must be interpreted according to the Spin implementation tier:
-
-- **full upstream:** Spin reuses the relevant pinned Meilisearch source layers;
-- **partial upstream:** Spin reuses some upstream layers and replaces blocked storage/runtime boundaries;
-- **legacy fallback:** Spin uses the custom subset only because upstream compilation was blocked.
-
-Only the first tier supports a strong same-application comparison. The second and third tiers are still useful, but the report must frame them as porting evidence plus benchmark evidence.
+Memory metrics are not perfectly symmetric across Spin and OCI. The report must state this clearly and identify whether a metric comes from Docker/cgroup data or host process sampling.

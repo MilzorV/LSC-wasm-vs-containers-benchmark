@@ -1,6 +1,6 @@
 [package]
 name = "meili-spin-storage-memory"
-description = "Process-local in-memory storage for the Meilisearch-compatible Spin benchmark."
+description = "Archived process-local storage for the earlier Meilisearch-compatible fallback."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
