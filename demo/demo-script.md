@@ -1,102 +1,183 @@
 # Demo Script: Movie Search on Spin/WASM vs OCI
 
-Cel demo: pokazać, że oba runtime'y uruchamiają tę samą aplikację, zwracają te
-same wyniki i mają przygotowane pełne artefakty benchmarkowe.
+**Goal:** Show the same app on two runtimes, prove identical results, then show benchmark evidence.
 
-Zakładany czas: 3-4 minuty w prezentacji 10-12 minut.
+**Live demo time:** ~4–5 minutes (fits a 10–12 min talk; leave benchmark *runs* for pre-recorded or backup slides).
 
-## Przygotowanie Przed Prezentacją
+**Story arc:** Standalone apps → side-by-side compare → benchmark dashboard.
 
-W terminalu 1:
+---
+
+## How to run (before the audience)
+
+### Prerequisites
+
+- Spin CLI 3.x, Rust `wasm32-wasip2`, Docker Compose, Node.js 22+, Python 3
+- Repo root: `LSC-wasm-vs-containers-benchmark`
+
+### One-time build (or after frontend changes)
 
 ```bash
-make frontend-build
+make frontend-build    # embeds UI + copies dashboard.json/plots into dist/
 cd spin-meili && spin build
-spin up --listen 127.0.0.1:8080
+cd oci-movie-search && docker compose build
 ```
 
-W terminalu 2:
+Optional — refresh benchmark charts in the UI:
 
 ```bash
-cd oci-movie-search
-docker compose up --build
+make analyze           # writes results/processed/dashboard.json + plots
+make frontend-build    # re-embed updated dashboard data
 ```
 
-W terminalu 3 (opcjonalnie — przyciski „Run pilot” na dashboardzie):
+### Three terminals during the demo
+
+| Terminal | Command | Serves |
+|----------|---------|--------|
+| **1 — Spin** | `cd spin-meili && spin up --listen 127.0.0.1:8080` | WASM app + static UI on **:8080** |
+| **2 — OCI** | `cd oci-movie-search && docker compose up` | Container app + static UI on **:8081** |
+| **3 — Bench UI** (optional) | `make bench-ui` | Helper on **:8092** for “Run pilot” in browser |
+
+### Health check (run once both are up)
 
 ```bash
-make bench-ui
+curl -fsS http://127.0.0.1:8080/health && echo
+curl -fsS http://127.0.0.1:8081/health && echo
 ```
 
-W terminalu 4, z katalogu głównego repo:
+Expected: `{"status":"available"}` for both.
+
+### Quick smoke (optional confidence check)
 
 ```bash
-curl -fsS http://127.0.0.1:8080/health
-curl -fsS http://127.0.0.1:8081/health
+make smoke
 ```
 
-Oczekiwany wynik dla obu usług:
+### URL cheat sheet
 
-```json
-{"status":"available"}
-```
+| What | URL |
+|------|-----|
+| Spin app (search + browse) | http://127.0.0.1:8080/spin |
+| OCI app (search + browse) | http://127.0.0.1:8081/oci |
+| Side-by-side compare | http://127.0.0.1:8080/ |
+| Benchmark dashboard | http://127.0.0.1:8080/benchmarks |
 
-## Demo Na Żywo
+Print URLs: `make demo`
 
-1. Pokaż aplikacje standalone:
+---
 
-```text
-http://127.0.0.1:8080/spin   # Search + Browse na Spin
-http://127.0.0.1:8081/oci    # Search + Browse na OCI
-```
+## Live demo — three acts
 
-2. Otwórz porównanie runtime'ów:
+### Act 1 — Two real applications (~1.5 min)
 
-```text
-http://127.0.0.1:8080/
-```
+**Message:** Same product, two deployment models — not two different codebases.
 
-Wpisz `space` i kliknij **Search both** — obie kolumny (Spin `:8080` i OCI `:8081`)
-powinny pokazać te same tytuły i badge **Match**.
+1. Open **Spin app:** http://127.0.0.1:8080/spin  
+   - Point out badge **Spin / WASM · :8080** and catalog line (~44k movies).
+2. **Search** for `space` — scroll results, open one movie card (details dialog).
+3. Switch to **Browse** — next page of catalog.
+4. Open **OCI app:** http://127.0.0.1:8081/oci  
+   - Same UI, badge **OCI / Docker · :8081**.
+5. Repeat **Search** `space` and optionally **Browse** — same titles/order on the first page.
 
-Stary URL `/demo` nadal działa (alias do tej samej strony).
+**Say:** One Rust `movie-search-core`; Spin adapter vs OCI adapter. UI is shared; APIs differ only by host/port.
 
-3. Otwórz dashboard benchmarków:
+---
 
-```text
-http://127.0.0.1:8080/benchmarks
-```
+### Act 2 — Side-by-side runtime compare (~1 min)
 
-Pokaż tabele i wykresy z ostatniego `make analyze`. Z uruchomionym `make bench-ui`
-możesz odpalić **Run pilot** z przeglądarki (kilka minut).
+**Message:** Under the hood, rankings must match — that’s our fairness guarantee.
 
-4. Backup — parytet w terminalu:
+1. Open http://127.0.0.1:8080/ (or `/demo`, same page).
+2. Query `space` → click **Search both**.
+3. Show both columns with latency (ms) and green **Match** badge.
+4. Try a second query: `toy story` or `dark knight` — still **Match** if both backends are healthy.
+
+**Say:** Compare page calls `:8080` and `:8081` directly (CORS). Mismatch would mean a bug in shared core or adapter.
+
+**Backup (terminal):**
 
 ```bash
 benchmarks/compare_results.sh
+# → Spin and OCI movie-search results match.
 ```
 
-Oczekiwane zakończenie:
+---
 
-```text
-Spin and OCI movie-search results match.
-```
+### Act 3 — Benchmarks (~1.5 min)
 
-5. Artefakty benchmarku:
+**Message:** We measured cold start, load, and memory — not just a hand-waved “WASM is faster.”
+
+1. Open http://127.0.0.1:8080/benchmarks
+2. Walk through:
+   - **Spin vs OCI** metric cards (cold p95, load p95, throughput, host RSS).
+   - **Plots** (cold start, latency, throughput, memory).
+   - **Summary tables** (optional detail).
+3. Do **not** run a full benchmark live unless you pre-tested timing.
+
+**If `make bench-ui` is running:** mention **Run pilot** runs a shortened `run_all.sh` (~few min) — use only if you have time and a stable machine.
+
+**Pre-generated artifacts (no live run needed):**
 
 ```bash
-ls results/raw results/processed results/plots
+ls results/processed results/plots
+open results/plots/cold_start_p95.png   # macOS
 ```
 
-## Komentarz Do Demo
+**Say:** Full harness: `make benchmark` or `benchmarks/run_all.sh`; analysis: `make analyze`. Plots in report/presentation match these files.
 
-- To nie są dwie różne wyszukiwarki, tylko jeden Rust core w dwóch izolacjach.
-- `/spin` i `/oci` to pełne aplikacje; `/` to porównanie; `/benchmarks` to wyniki pomiarów.
-- Pełny benchmark: `make benchmark` lub przycisk **Run full** (wymaga `make bench-ui`).
+---
 
-## Plan Awaryjny
+## Timing guide (4–5 min live UI only)
 
-Jeżeli live runtime nie wystartuje:
+| Segment | Time | URL |
+|---------|------|-----|
+| Spin app: search + browse | ~45 s | `/spin` |
+| OCI app: same flow | ~45 s | `/oci` |
+| Compare: Search both + Match | ~60 s | `/` |
+| Benchmark dashboard | ~90 s | `/benchmarks` |
 
-1. Pokaż `results/processed/*.csv`, `dashboard.json` i wykresy z `results/plots/`.
-2. Wyjaśnij, że pełny benchmark był wykonany komendą `make benchmark`.
+---
+
+## Talking points (one-liners)
+
+- Same fixture: **44,471** movies in `fixtures/movies.json`.
+- Spin: `wasm32-wasip2` + WASI HTTP; OCI: native binary in Docker.
+- Search semantics are deterministic (token match, title > genre > overview, tie-break by id).
+- Benchmarks compare **systems**, not two different search engines.
+
+---
+
+## Plan B — if a runtime fails
+
+1. Show the **other** app + **benchmarks** page (plots/CSV still valid).
+2. Terminal: `results/processed/*.csv`, `results/plots/*.png`.
+3. Slide: architecture + pre-captured plots from `presentation/` or `report/`.
+4. Explain parity was verified with `make smoke` / `compare_results.sh` before the session.
+
+---
+
+## After the demo (not live)
+
+```bash
+make benchmark-pilot   # short end-to-end (~minutes)
+make benchmark         # full study (longer)
+make analyze           # refresh dashboard.json + plots
+make frontend-build    # re-embed UI data, then rebuild Spin/OCI images
+```
+
+Stop services:
+
+```bash
+# Ctrl+C in Spin and compose terminals, or:
+cd oci-movie-search && docker compose down
+```
+
+---
+
+## Komentarz (PL) — skrót
+
+1. **Aplikacje:** `/spin` i `/oci` — normalne wyszukiwanie i przeglądanie.
+2. **Porównanie:** `/` — Search both, badge Match.
+3. **Benchmarki:** `/benchmarks` — wykresy z `make analyze`; pilot tylko z `make bench-ui`.
+4. **Uruchomienie:** dwa terminale (Spin + Docker), opcjonalnie trzeci (`make bench-ui`).
