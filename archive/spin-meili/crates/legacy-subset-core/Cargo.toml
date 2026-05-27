@@ -1,0 +1,15 @@
+[package]
+name = "meili-spin-legacy-subset-core"
+description = "Archived Meilisearch-compatible fallback from the earlier benchmark direction."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

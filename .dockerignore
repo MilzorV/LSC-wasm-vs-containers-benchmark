@@ -1,0 +1,9 @@
+.git
+vendor
+spin-meili/target
+spin-meili/.spin
+docs/*.log
+results
+analysis
+report
+*.tmp

@@ -1,36 +1,42 @@
 # Environment Record
 
-This file captures local tool versions observed during the Week 1 scaffold and upstream-port pivot. Re-record these values before collecting final benchmark results.
+This file captures the local environment for final benchmark collection. Re-record these values before publishing final numbers.
 
 | Item | Value |
 |---|---|
-| Date | 2026-05-11 |
-| OS | Darwin 24.6.0 arm64 |
+| Date recorded | 2026-05-24 04:36:43 CEST |
+| OS | macOS 15.6, Darwin 24.6.0 arm64 |
+| Kernel | Darwin Kernel Version 24.6.0: Mon Jul 14 11:30:40 PDT 2025; root:xnu-11417.140.69~1/RELEASE_ARM64_T8132 |
 | Hostname | Miloszs-MacBook-Air.local |
-| CPU | Not captured in sandbox (`sysctl` denied) |
-| RAM | Not captured in sandbox (`sysctl` denied) |
+| CPU | Apple M4 |
+| CPU cores | 10 physical / 10 logical |
+| RAM | 24 GiB |
+| Power mode | macOS low power mode off (`lowpowermode 0`) |
 | Rust stable | `rustc 1.95.0 (59807616e 2026-04-14)` |
-| Upstream Rust toolchain | `1.91.1-aarch64-apple-darwin` installed by upstream Meilisearch |
 | Installed WASI target | `wasm32-wasip2` |
 | Spin | `spin 3.6.3 (88d51cf 2026-04-09)` |
 | Docker | `Docker version 28.5.1, build e180ab8` |
 | Docker Compose | `Docker Compose version v2.40.2-desktop.1` |
 | Python | `Python 3.12.7` |
-| Meilisearch OCI image | `getmeili/meilisearch:v1.43.0` |
-| Upstream source tag | `v1.43.0` |
-| Upstream source commit | `475ed56e5612df0dbb826748add5f93e0e7d5500` |
-| Git base commit at scaffold time | `f968ad9` |
+| Matplotlib | `3.10.8` |
+| Git commit benchmarked | `5ccaf5b` |
+| Benchmark code state | working tree contains refreshed final result artifacts and report/deck work |
+| OCI image | local `lsc-movie-search-oci:latest` |
+| Shared core | `movie-search-core` |
+| Fixture | `fixtures/movies.json`, 44,471 documents |
 
-## Verification artifacts
+## Final Benchmark Artifacts
 
-- Native upstream check log: `docs/upstream-native-check.log` (ignored by Git).
-- Layered WASI report: `docs/upstream-wasi-blockers.md` (tracked).
-- Per-package WASI logs: `docs/upstream-wasi-check-*.log` (ignored by Git).
+- Cold start raw CSV: `results/raw/cold_start_20260524-042516.csv`.
+- Load raw CSV: `results/raw/load_20260524-042555.csv`.
+- Memory raw CSV: `results/raw/memory_20260524-043412.csv`.
+- Processed summaries: `results/processed/*.csv`.
+- Plots: `results/plots/*.png`.
 
-Before Week 2 benchmark collection, update this file with:
+## Historical Verification Artifacts
 
-- exact CPU model and core count;
-- RAM;
-- power/performance mode;
-- Git commit SHA of the benchmarked code;
-- whether the Spin benchmark uses full upstream, partial upstream, or the legacy subset fallback.
+- Native upstream Meilisearch check log: `docs/upstream-native-check.log`.
+- Layered WASI report: `docs/upstream-wasi-blockers.md`.
+- Per-package WASI logs: `docs/upstream-wasi-check-*.log`.
+
+These are retained as evidence for the earlier Meilisearch feasibility path, not as the primary movie-search benchmark.

@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install wasm target
+        run: rustup target add wasm32-wasip2
+
+      - name: Install Spin
+        run: |
+          curl -fsSL https://developer.fermyon.com/downloads/install.sh | bash
+          echo "$HOME/.spin/bin" >> "$GITHUB_PATH"
+
+      - name: Rust unit and integration tests
+        run: cargo test --manifest-path spin-meili/Cargo.toml
+
+      - name: Build Spin component
+        run: spin build
+        working-directory: spin-meili
+
+      - name: Build OCI image
+        run: docker compose build
+        working-directory: oci-movie-search
+
+      - name: Install Python analysis dependencies
+        run: python3 -m pip install matplotlib
+
+      - name: Pilot benchmark
+        run: benchmarks/run_all.sh --pilot

@@ -1,0 +1,12 @@
+[package]
+name = "meili-wasi-compat"
+description = "Archived compatibility boundary from the earlier Meilisearch-to-WASI feasibility path."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

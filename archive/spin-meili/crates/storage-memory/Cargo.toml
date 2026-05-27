@@ -1,0 +1,11 @@
+[package]
+name = "meili-spin-storage-memory"
+description = "Archived process-local storage for the earlier Meilisearch-compatible fallback."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+meili-spin-legacy-subset-core.workspace = true

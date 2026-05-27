@@ -1,0 +1,12 @@
+[package]
+name = "movie-search-core"
+description = "Shared deterministic movie search logic for Spin and OCI benchmark adapters."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

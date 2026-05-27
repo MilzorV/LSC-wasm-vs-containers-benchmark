@@ -1,0 +1,9 @@
+services:
+  movie-search:
+    build:
+      context: ..
+      dockerfile: oci-movie-search/Dockerfile
+    image: lsc-movie-search-oci:latest
+    container_name: lsc-movie-search-oci
+    ports:
+      - "127.0.0.1:8081:7700"

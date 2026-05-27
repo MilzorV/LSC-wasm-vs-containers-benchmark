@@ -1,6 +1,11 @@
 # Teacher Consultation Notes
 
-Date: 2026-05-11
+> **Current status (2026-05-24):** the project completed the shared
+> `movie-search-core` benchmark across Spin/WASM and OCI. The Meilisearch notes
+> below are retained as the technical reason for the pivot and as consultation
+> history.
+
+Date: 2026-05-11 (original consultation), updated 2026-05-24
 
 ## Project topic
 
@@ -8,120 +13,91 @@ We are working on:
 
 > WebAssembly Microservices with Spin/wasmtime: deploy a microservice application using Spin/WASI components and compare cold-start latency, memory isolation, and throughput against equivalent OCI containers.
 
-The project has pivoted from a custom Meilisearch-compatible subset to an attempted **upstream Meilisearch-on-Spin port**:
+## Final benchmark model
 
-- **OCI side:** official `getmeili/meilisearch:v1.43.0`.
-- **Source side:** upstream `meilisearch/meilisearch` tag `v1.43.0`, observed commit `475ed56e5612df0dbb826748add5f93e0e7d5500`.
-- **Wasm side:** Spin/wasmtime HTTP component that should reuse as much upstream Meilisearch code as technically possible.
-- **Fallback:** the existing custom Spin subset remains available only as a labeled fallback if upstream crates cannot be adapted within the project.
+The submitted project compares one shared Rust HTTP service in two isolation models:
 
-## What we have done
+| Runtime | URL | Adapter |
+|---|---|---|
+| Spin/wasmtime | `http://127.0.0.1:8080` | `spin-meili/crates/spin-http-adapter` |
+| OCI/Docker | `http://127.0.0.1:8081` | `spin-meili/crates/oci-http-adapter` |
 
-- Built the original Week 1 smoke scaffold:
-  - `spin-meili/` Rust Spin workspace;
-  - `oci-meilisearch/` Docker Compose baseline;
-  - `fixtures/documents.json`;
-  - `benchmarks/smoke_spin.sh` and `benchmarks/smoke_oci.sh`;
-  - environment and methodology docs.
-- Verified that both the Spin fallback and OCI baseline can accept the same fixture and search for `space`.
-- Added upstream-port scaffolding:
-  - `scripts/fetch-meilisearch.sh`;
-  - `scripts/check-upstream-native.sh`;
-  - `scripts/check-upstream-wasi.sh`;
-  - `spin-meili/crates/meili-wasi-compat`;
-  - renamed the custom search crate to `legacy-subset-core` so it is no longer presented as the main project core.
-- Fetched upstream Meilisearch `v1.43.0` into `vendor/meilisearch/`.
-- Ran a native upstream check for package `meilisearch`; it succeeds.
-- Ran layered `wasm32-wasip2` checks; small crates pass, but `milli` and higher layers currently fail.
-- Added browser-level mirror work:
-  - Spin serves the same pinned Meilisearch mini-dashboard assets as OCI;
-  - Spin and OCI both use `MASTER_KEY`;
-  - Spin now implements dashboard-compatible document browsing, index stats, and settings routes for the selected benchmark surface.
+Shared core: `spin-meili/crates/search-core` over `fixtures/movies.json`
+(44,471 documents).
 
-## Current technical evidence
+API:
 
-Native upstream check:
+- `GET /health`, `/version`, `/stats`, `/movies`
+- `POST /search`
 
-```bash
-scripts/check-upstream-native.sh
-```
+Parity is verified with `benchmarks/compare_results.sh` before performance runs.
 
-Result: pass for pinned upstream `meilisearch`.
+## What we did after consultation
 
-Layered WASI check:
+- Implemented deterministic search, pagination, and deduplication in `movie-search-core`.
+- Built matching Spin and OCI HTTP adapters on the same fixture and API.
+- Added cold-start, load, memory, analysis, plots, report, presentation, and demo script.
+- Documented the abandoned Meilisearch path in `docs/upstream-wasi-blockers.md`.
+- Moved historical Meilisearch-era crates to `archive/spin-meili/crates/`.
+
+## Meilisearch feasibility history (background only)
+
+Original plan before pivot:
+
+- **OCI side:** official `getmeili/meilisearch:v1.43.0`
+- **Wasm side:** upstream Meilisearch-on-Spin port attempt
+
+Evidence collected:
 
 ```bash
-scripts/check-upstream-wasi.sh
+scripts/check-upstream-native.sh   # pass
+scripts/check-upstream-wasi.sh     # fail from milli upward
 ```
 
-Current result:
-
-- `flatten-serde-json`: pass;
-- `filter-parser`: pass;
-- `milli`: fail;
-- `meilisearch-types`: fail;
-- `routes`: fail;
-- `meilisearch`: fail.
-
-The first observed failures are in dependency/runtime layers such as `ring` C compilation for `wasm32-wasip2` and Tokio wasm feature constraints. LMDB/heed and memory-mapped storage are still expected deeper blockers because Meilisearch storage relies on LMDB and mmap.
-
-Detailed evidence is in:
-
-```text
-docs/upstream-wasi-blockers.md
-```
+Detailed blockers: `docs/upstream-wasi-blockers.md` (LMDB/mmap, native crypto/C deps, Tokio wasm constraints).
 
 ## Current benchmark surface
 
-We now compare the same browser entrypoint plus the same benchmark API surface:
+Measured metrics:
 
-- browser dashboard at `/` on both Spin and OCI;
-- cold start to first successful `/health`;
-- search throughput for `POST /indexes/movies/search` with `{"q":"space"}`;
-- placeholder search throughput for `POST /indexes/movies/search` with `{"q":""}`;
-- document browsing via `GET /indexes/movies/documents`;
-- memory at idle and under load;
+- cold start to `/health` (`ready_ms`);
+- post-ready first search (`search_after_ready_ms`);
+- total cold path through first search (`total_cold_path_ms`);
+- search throughput for `POST /search` with `{"q":"space"}`;
+- empty-query throughput for `POST /search` with `{"q":""}`;
+- idle and under-load memory with explicit source labels;
 - latency percentiles p50, p95, p99;
-- error rate under concurrency.
+- response validation and error counts under concurrency.
 
-Planned concurrency levels:
+Concurrency levels: `10`, `50`, `100`, `200`.
 
-```text
-10, 50, 100, 200
-```
+Full runs repeat load scenarios three times and analyze only the latest raw run
+id by default.
 
 ## Important limitations
 
-- Full unmodified Meilisearch does not currently compile for `wasm32-wasip2` in our first feasibility check.
-- The current Spin service serves the same mini-dashboard, but its backend logic is still the legacy subset fallback, not the upstream daemon.
-- If we replace LMDB/mmap storage with a WASI-compatible layer, that must be treated as a porting deviation.
-- Only a full or partial upstream reuse tier can support a same-source comparison.
-- If we fall back to the subset, the result is still useful for Wasm-vs-container benchmarking, but not a same-application benchmark.
+- Search is a deterministic linear scan, not a production inverted index.
+- Memory comparison uses multiple sources; host RSS is the closest apples-to-apples metric.
+- Benchmarks run on a single documented host (`docs/ENVIRONMENT.md`).
+- The Meilisearch path is feasibility evidence only, not the main comparison.
 
-## Questions to ask the teacher
+## Deliverables
 
-1. Is the new goal acceptable: attempt same pinned Meilisearch source/version first, then document any WASI blockers and deviations?
+- Report: `report/final-report.pdf`
+- Presentation: `presentation/movie-search-spin-vs-oci.pdf`
+- Demo script: `demo/demo-script.md`
+- Reproducible benchmark: `benchmarks/run_all.sh` or `make benchmark`
 
-2. If full upstream Meilisearch cannot compile because of LMDB/mmap/runtime dependencies, is a partial port acceptable if it reuses upstream API/query/search layers and replaces storage?
+## Questions resolved by the final implementation
 
-3. Is the current blocker evidence enough to justify a fallback benchmark if the full port is not feasible within the course timeline?
+1. **Same application behavior?** Yes — shared core, parity script, identical hit IDs.
+2. **Cold start definition?** We report `/health`, post-ready search, and total cold path separately.
+3. **Fixture size:** 44,471 deduplicated movies from TMDB metadata CSV.
+4. **Memory discussion:** Both conceptual isolation comparison and measured samples, with source labels and caveats.
+5. **Deliverable format:** Report PDF, presentation, demo script, raw/processed results, and plots.
 
-4. Should the final comparison require same binary/application behavior, or is same API surface plus documented porting deviations acceptable?
+## Suggested follow-up if extending the project
 
-5. Is browser-level parity with the same mini-dashboard and selected API workflows enough for the project, given the upstream daemon cannot currently compile to WASI?
-
-6. Should cold start measure only first `/health`, or should it include fixture load and first successful search?
-
-7. How large should the benchmark fixture be for the final run?
-
-8. What level of memory isolation discussion is expected: conceptual WASI/container comparison, measured overhead, or both?
-
-9. What final deliverable format is preferred: Markdown report, PDF, presentation slides, or all of these?
-
-## Suggested next steps after consultation
-
-- Decide whether to spend Week 2 on fixing WASI blockers or on the fallback benchmark harness.
-- Try to reuse the highest passing upstream crates in the Spin adapter.
-- If `milli` remains blocked, document the exact reason and decide whether a WASI-compatible storage abstraction is acceptable.
-- Implement cold-start, throughput, and memory scripts.
-- Run a small pilot benchmark and bring early numbers to the next consultation.
+- Add inverted-index parity while keeping the same API.
+- Run the benchmark on Linux CI hardware in addition to the documented M4 host.
+- Compare Spin host RSS against OCI host RSS as the primary memory chart in the report narrative.

@@ -1,90 +1,73 @@
 # Methodology
 
-## Current comparison model
+## Current Comparison Model
 
-The project now separates **porting feasibility** from **runtime benchmarking**.
+The project compares one application implemented once and exposed through two runtime adapters.
 
 | System | URL | Purpose |
 |---|---|---|
-| Spin/wasmtime | `http://127.0.0.1:8080` | Wasm implementation under test; serves the same mini-dashboard as OCI and currently backs it with the legacy subset fallback |
-| OCI Meilisearch | `http://127.0.0.1:8081` | Official native baseline, `getmeili/meilisearch:v1.43.0` |
+| Spin/wasmtime | `http://127.0.0.1:8080` | WASI HTTP component using `movie-search-core` |
+| OCI | `http://127.0.0.1:8081` | Native Rust HTTP server using `movie-search-core` |
 
-The goal is to move as much Spin behavior as possible onto upstream Meilisearch `v1.43.0` source. If that is blocked, the report must state the exact blocker and label any fallback benchmark results accordingly.
-
-## Upstream feasibility checks
-
-Fetch pinned source:
-
-```bash
-scripts/fetch-meilisearch.sh
-```
-
-Check native upstream buildability:
-
-```bash
-scripts/check-upstream-native.sh
-```
-
-Check selected upstream crates for `wasm32-wasip2`:
-
-```bash
-scripts/check-upstream-wasi.sh
-```
-
-The WASI report is [upstream-wasi-blockers.md](upstream-wasi-blockers.md). The current result is:
-
-- `flatten-serde-json`: passes for `wasm32-wasip2`;
-- `filter-parser`: passes for `wasm32-wasip2`;
-- `milli`: fails before storage integration because dependencies such as `ring` do not build cleanly for this target in the current setup;
-- `meilisearch-types`, `routes`, and `meilisearch`: fail through runtime/dependency layers including Tokio wasm feature constraints.
-
-LMDB/heed and memory-mapped storage remain expected deeper blockers even after the current crypto/runtime build blockers are addressed.
+This replaces the earlier Meilisearch comparison. That path remains documented in [upstream-wasi-blockers.md](upstream-wasi-blockers.md), but it is not the main benchmark because the Spin fallback and official Meilisearch did not share storage or ranking semantics.
 
 ## Fixture
 
-The shared fixture is `fixtures/documents.json`.
+The shared fixture is `fixtures/movies.json`.
 
-- Index UID: `movies`
+- Documents: `44,471`
 - Primary key: `id`
 - Fields: `id`, `title`, `overview`, `genre`, `year`
-- Smoke query: `space`
+- Deduplication: last-write-wins by `id`
 
-The OCI baseline uses native Meilisearch task processing. The current Spin fallback stores state through Spin's default key-value store under `spin-meili/.spin/sqlite_key_value.db`.
+The raw CSV source remains in `fixtures/movies_metadata.csv`.
 
-Both dashboards use the same demo API key:
+## Shared API Surface
 
-```text
-MASTER_KEY
-```
-
-## Benchmark API surface
-
-The benchmark surface is intentionally narrow:
+Both runtimes expose the same endpoints:
 
 - `GET /health`
 - `GET /version`
-- `GET /indexes`
-- `POST /indexes/{uid}/documents`
-- `POST /indexes/{uid}/search`
 - `GET /stats`
-- `GET /tasks`
+- `GET /movies?offset=&limit=`
+- `POST /search`
 
-For browser mirror testing, Spin also implements dashboard-compatible document browsing and settings routes:
+Search request body:
 
-- `GET /`
-- `GET /assets/index-dDwzADMz.js`
-- `GET /indexes/{uid}`
-- `GET /indexes/{uid}/documents`
-- `POST /indexes/{uid}/documents/fetch`
-- `GET /indexes/{uid}/stats`
-- `GET /indexes/{uid}/settings`
-- `PATCH /indexes/{uid}/settings`
+```json
+{"q":"space","offset":0,"limit":20}
+```
 
-Benchmark scripts should use the same fixture, index UID, primary key, and search request JSON for both systems. If Spin cannot exactly match native Meilisearch response fields, scripts should validate stable comparable fields such as hit IDs, hit count, status, and error rate.
+Search responses include:
 
-## Week 1 acceptance checks
+```json
+{
+  "hits": [],
+  "query": "space",
+  "offset": 0,
+  "limit": 20,
+  "estimatedTotalHits": 0,
+  "processingTimeMs": 0
+}
+```
 
-Spin fallback:
+`processingTimeMs` is not used for parity checks because it naturally varies by runtime and request.
+
+## Search Semantics
+
+The ranking is intentionally simple and deterministic:
+
+1. tokenize the query on non-alphanumeric characters;
+2. match tokens by case-insensitive substring search;
+3. sort by number of matched query tokens descending;
+4. break ties by field weight, with `title > genre > overview`;
+5. break remaining ties by ascending `id`.
+
+Empty queries return all documents by ascending `id`.
+
+## Acceptance Checks
+
+Spin:
 
 ```bash
 cd spin-meili
@@ -92,25 +75,17 @@ spin build
 spin up --listen 127.0.0.1:8080
 ```
 
-From another shell:
+From the repository root:
 
 ```bash
 benchmarks/smoke_spin.sh
 ```
 
-Browser mirror:
-
-```text
-http://127.0.0.1:8080/
-```
-
-Enter `MASTER_KEY`, then browse the `movies` index and search for `space`.
-
 OCI:
 
 ```bash
-cd oci-meilisearch
-docker compose up -d
+cd oci-movie-search
+docker compose up --build
 ```
 
 From the repository root:
@@ -119,39 +94,105 @@ From the repository root:
 benchmarks/smoke_oci.sh
 ```
 
-Native browser baseline:
-
-```text
-http://127.0.0.1:8081/
-```
-
-Reset OCI state:
+With both services running:
 
 ```bash
-cd oci-meilisearch
-docker compose down -v
+benchmarks/compare_results.sh
 ```
 
-## Benchmark surface for Week 2
+## Benchmark Surface
 
-The benchmark scripts should measure:
+The benchmark scripts measure:
 
-- cold start to first successful `/health`;
-- optional cold start plus fixture load plus first successful search;
-- search throughput for `POST /indexes/movies/search` with `{"q":"space"}`;
-- placeholder search throughput for `POST /indexes/movies/search` with `{"q":""}`;
+- cold start to first successful `/health` (`ready_ms`);
+- optional post-ready first search latency (`search_after_ready_ms`);
+- optional total cold path from process start through first successful search (`total_cold_path_ms`);
+- search throughput for `POST /search` with `{"q":"space"}`;
+- empty-query throughput for `POST /search` with `{"q":""}`;
 - idle and under-load memory for both systems;
 - latency percentiles p50, p95, p99;
-- error counts and response validation.
+- error counts and response validation;
+- load repeat variance when `--repeats` is greater than 1.
 
 Required concurrency levels are `10`, `50`, `100`, and `200`.
 
-## Interpretation rule
+Load harness details: [LOAD_HARNESS.md](LOAD_HARNESS.md).
 
-Results must be interpreted according to the Spin implementation tier:
+## Memory Measurement
 
-- **full upstream:** Spin reuses the relevant pinned Meilisearch source layers;
-- **partial upstream:** Spin reuses some upstream layers and replaces blocked storage/runtime boundaries;
-- **legacy fallback:** Spin uses the custom subset only because upstream compilation was blocked.
+Memory metrics are **not perfectly symmetric** across Spin and OCI. Treat them as operational estimates and always read the `source` column.
 
-Only the first tier supports a strong same-application comparison. The second and third tiers are still useful, but the report must frame them as porting evidence plus benchmark evidence.
+| System | Primary source | Comparable secondary source |
+|---|---|---|
+| Spin | `host_process_rss` (Spin/wasmtime process tree on the host) | none |
+| OCI | `docker_stats` (container usage reported by Docker) | `host_process_rss` (container PID tree on the host) |
+
+For cross-runtime comparison, prefer `host_process_rss` samples and the plot
+`results/plots/memory_peak_host_rss.png`. Docker-reported OCI memory remains in
+the dataset because it reflects common container operations tooling.
+
+## Benchmark Scripts
+
+Run a short pilot:
+
+```bash
+benchmarks/run_all.sh --pilot
+```
+
+Run the full benchmark:
+
+```bash
+benchmarks/run_all.sh
+```
+
+Equivalent shortcuts:
+
+```bash
+make benchmark-pilot
+make benchmark
+make analyze
+```
+
+Standalone runners rebuild artifacts when passed `--build-spin` and/or
+`--build-oci`. The orchestrator always builds before benchmarking.
+
+Analysis uses only the latest run id per raw prefix by default. Pass
+`--all-runs` to `analyze_results.py` to aggregate every historical CSV.
+
+Raw outputs are written to `results/raw`, processed summaries to
+`results/processed`, and plots to `results/plots`.
+
+## Result File Contracts
+
+Cold start raw CSV:
+
+```text
+system,scenario,iteration,success,ready_ms,search_after_ready_ms,total_cold_path_ms,first_search_ms,error
+```
+
+- `ready_ms`: startup until `/health` succeeds
+- `search_after_ready_ms`: first successful `/search` after `/health`
+- `total_cold_path_ms`: startup until first successful `/search`
+- `first_search_ms`: deprecated alias of `total_cold_path_ms` for older runs
+
+Load raw CSV:
+
+```text
+run_id,repeat,system,query,concurrency,request_id,success,status,latency_ms,error
+```
+
+Reference `hey` CSV:
+
+```text
+run_id,tool,system,query,concurrency,duration_seconds,request_rate,latency_p50_ms,latency_p95_ms,latency_p99_ms,success_count,error_count
+```
+
+Memory raw CSV:
+
+```text
+system,phase,timestamp_ms,memory_bytes,source
+```
+
+Processed summaries include sample counts, success/error counts, min, mean,
+median, p50, p95, p99, max, standard deviation where applicable, and request
+rate plus repeat throughput variance for load runs.
