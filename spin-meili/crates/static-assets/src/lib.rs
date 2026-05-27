@@ -11,6 +11,8 @@ pub fn lookup(segments: &[&str]) -> Option<StaticFile> {
     let path = match segments {
         [] => "index.html",
         ["demo"] | ["demo", "index.html"] => "index.html",
+        ["spin"] | ["spin", "index.html"] => "spin/index.html",
+        ["oci"] | ["oci", "index.html"] => "oci/index.html",
         ["benchmarks"] | ["benchmarks", "index.html"] => "benchmarks/index.html",
         ["assets", rest @ ..] if !rest.is_empty() => {
             return lookup_path(&format!("assets/{}", join_segments(rest)));
@@ -66,6 +68,8 @@ mod tests {
     fn serves_app_and_benchmark_entrypoints() {
         assert!(lookup(&[]).is_some());
         assert!(lookup(&["demo"]).is_some());
+        assert!(lookup(&["spin"]).is_some());
+        assert!(lookup(&["oci"]).is_some());
         assert!(lookup(&["benchmarks"]).is_some());
     }
 

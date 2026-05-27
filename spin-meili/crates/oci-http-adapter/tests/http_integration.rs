@@ -100,6 +100,38 @@ fn app_is_served_at_root() {
 }
 
 #[test]
+fn spin_app_is_served() {
+    let port = free_port();
+    let child = start_server(port);
+    wait_for_health(port);
+
+    let response = ureq::get(&format!("http://127.0.0.1:{port}/spin"))
+        .call()
+        .expect("spin app route");
+    assert_eq!(response.status(), 200);
+    let body = response.into_string().expect("spin app body");
+    assert!(body.contains("movie-search-app"));
+
+    stop_server(child);
+}
+
+#[test]
+fn oci_app_is_served() {
+    let port = free_port();
+    let child = start_server(port);
+    wait_for_health(port);
+
+    let response = ureq::get(&format!("http://127.0.0.1:{port}/oci"))
+        .call()
+        .expect("oci app route");
+    assert_eq!(response.status(), 200);
+    let body = response.into_string().expect("oci app body");
+    assert!(body.contains("movie-search-app"));
+
+    stop_server(child);
+}
+
+#[test]
 fn demo_alias_serves_compare_app() {
     let port = free_port();
     let child = start_server(port);

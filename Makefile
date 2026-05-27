@@ -36,6 +36,7 @@ presentation:
 	$(MAKE) -C $(ROOT)/presentation
 
 demo:
+	@echo "Spin app: http://127.0.0.1:8080/spin  OCI app: http://127.0.0.1:8081/oci"
 	@echo "Compare: http://127.0.0.1:8080/  Benchmarks: http://127.0.0.1:8080/benchmarks  Helper: make bench-ui (:8092)"
 
 demo-open:

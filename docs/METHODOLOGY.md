@@ -27,6 +27,8 @@ The raw CSV source remains in `fixtures/movies_metadata.csv`.
 Both runtimes expose the same endpoints:
 
 - `GET /` — runtime comparison UI (Spin vs OCI; presentation only, not benchmarked)
+- `GET /spin` — movie search app (Spin API)
+- `GET /oci` — movie search app (OCI API)
 - `GET /benchmarks` — benchmark dashboard (processed summaries + plots)
 - `GET /demo` — alias for `/`
 - `GET /assets/*`, `GET /benchmark-data/*` — frontend static assets

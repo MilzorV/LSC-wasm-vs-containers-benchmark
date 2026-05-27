@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Movie Search — Spin / WASM</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body
+    data-app="movie-search-app"
+    data-runtime="Spin / WASM"
+    data-api-base="http://127.0.0.1:8080"
+  >
+    <header class="site-header">
+      <div class="brand">
+        <h1>Movie Search</h1>
+        <p class="runtime-badge spin-badge">Spin / WASM · :8080</p>
+        <p id="status-line">Loading catalog…</p>
+      </div>
+      <nav class="nav-tabs" role="tablist">
+        <button type="button" class="nav-tab active" data-view="search">Search</button>
+        <button type="button" class="nav-tab" data-view="browse">Browse</button>
+      </nav>
+    </header>
+
+    <main class="container">
+      <section id="view-search" class="view active">
+        <form id="search-form" class="search-form">
+          <input
+            id="search-input"
+            type="search"
+            placeholder="Search by title, genre, or plot…"
+            autocomplete="off"
+          />
+          <button type="submit" class="btn primary">Search</button>
+        </form>
+        <div id="search-meta" class="results-meta" hidden></div>
+        <div id="search-results" class="movie-list">
+          <p class="placeholder">Enter a query to search 44,000+ movies.</p>
+        </div>
+        <div id="search-pager" class="pager" hidden>
+          <button type="button" class="btn" id="search-prev" disabled>Previous</button>
+          <button type="button" class="btn" id="search-next" disabled>Next</button>
+        </div>
+      </section>
+
+      <section id="view-browse" class="view">
+        <div id="browse-meta" class="results-meta"></div>
+        <div id="browse-results" class="movie-list">
+          <p class="placeholder">Open Browse to load the catalog.</p>
+        </div>
+        <div class="pager">
+          <button type="button" class="btn" id="browse-prev" disabled>Previous</button>
+          <button type="button" class="btn" id="browse-next" disabled>Next</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span id="engine-line"></span>
+      <span class="footer-links">
+        <a href="/">Compare runtimes</a>
+        <a href="/oci/">OCI app</a>
+        <a href="/benchmarks">Benchmarks</a>
+      </span>
+    </footer>
+
+    <dialog id="movie-dialog" class="movie-dialog">
+      <article id="movie-detail"></article>
+      <form method="dialog">
+        <button type="submit" class="btn">Close</button>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/app/main.js"></script>
+  </body>
+</html>

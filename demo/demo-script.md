@@ -43,7 +43,14 @@ Oczekiwany wynik dla obu usług:
 
 ## Demo Na Żywo
 
-1. Otwórz porównanie runtime'ów:
+1. Pokaż aplikacje standalone:
+
+```text
+http://127.0.0.1:8080/spin   # Search + Browse na Spin
+http://127.0.0.1:8081/oci    # Search + Browse na OCI
+```
+
+2. Otwórz porównanie runtime'ów:
 
 ```text
 http://127.0.0.1:8080/
@@ -54,7 +61,7 @@ powinny pokazać te same tytuły i badge **Match**.
 
 Stary URL `/demo` nadal działa (alias do tej samej strony).
 
-2. Otwórz dashboard benchmarków:
+3. Otwórz dashboard benchmarków:
 
 ```text
 http://127.0.0.1:8080/benchmarks
@@ -63,7 +70,7 @@ http://127.0.0.1:8080/benchmarks
 Pokaż tabele i wykresy z ostatniego `make analyze`. Z uruchomionym `make bench-ui`
 możesz odpalić **Run pilot** z przeglądarki (kilka minut).
 
-3. Backup — parytet w terminalu:
+4. Backup — parytet w terminalu:
 
 ```bash
 benchmarks/compare_results.sh
@@ -75,7 +82,7 @@ Oczekiwane zakończenie:
 Spin and OCI movie-search results match.
 ```
 
-4. Artefakty benchmarku:
+5. Artefakty benchmarku:
 
 ```bash
 ls results/raw results/processed results/plots
@@ -84,7 +91,7 @@ ls results/raw results/processed results/plots
 ## Komentarz Do Demo
 
 - To nie są dwie różne wyszukiwarki, tylko jeden Rust core w dwóch izolacjach.
-- `/` to strona porównawcza Spin vs OCI; `/benchmarks` to wyniki pomiarów.
+- `/spin` i `/oci` to pełne aplikacje; `/` to porównanie; `/benchmarks` to wyniki pomiarów.
 - Pełny benchmark: `make benchmark` lub przycisk **Run full** (wymaga `make bench-ui`).
 
 ## Plan Awaryjny

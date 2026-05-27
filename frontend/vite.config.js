@@ -9,6 +9,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
+        spin: resolve(__dirname, "spin/index.html"),
+        oci: resolve(__dirname, "oci/index.html"),
         benchmarks: resolve(__dirname, "benchmarks/index.html"),
       },
     },

@@ -7,6 +7,14 @@ echo "Checking OCI movie-search health at $OCI_URL/health"
 curl -fsS "$OCI_URL/health"
 echo
 
+echo "Checking OCI app UI at $OCI_URL/oci"
+curl -fsS "$OCI_URL/oci" | python3 -c '
+import sys
+assert "movie-search-app" in sys.stdin.read()
+print("oci app ok")
+'
+echo
+
 echo "Checking OCI compare UI at $OCI_URL/"
 root_body="$(curl -fsS "$OCI_URL/")"
 printf '%s' "$root_body" | python3 -c '

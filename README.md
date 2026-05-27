@@ -57,6 +57,8 @@ benchmarks/smoke_spin.sh
 The Spin service exposes:
 
 - `GET /` — runtime comparison UI (Spin vs OCI search)
+- `GET /spin` — full movie search app (Spin backend `:8080`)
+- `GET /oci` — full movie search app (OCI backend `:8081`)
 - `GET /benchmarks` — benchmark dashboard (tables + plots)
 - `GET /demo` — alias for `/` (legacy URL)
 - `GET /assets/*`, `GET /benchmark-data/*` — frontend static assets
@@ -123,7 +125,14 @@ make frontend-build
 make build
 ```
 
-Start **both** Spin (`:8080`) and OCI (`:8081`) for the compare UI:
+**Standalone apps** (search, browse, movie details):
+
+```text
+http://127.0.0.1:8080/spin    # uses Spin API on :8080
+http://127.0.0.1:8081/oci     # uses OCI API on :8081
+```
+
+**Runtime comparison** (start both backends):
 
 ```text
 http://127.0.0.1:8080/

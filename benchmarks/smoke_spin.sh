@@ -7,6 +7,14 @@ echo "Checking Spin movie-search health at $SPIN_URL/health"
 curl -fsS "$SPIN_URL/health"
 echo
 
+echo "Checking Spin app UI at $SPIN_URL/spin"
+curl -fsS "$SPIN_URL/spin" | python3 -c '
+import sys
+assert "movie-search-app" in sys.stdin.read()
+print("spin app ok")
+'
+echo
+
 echo "Checking Spin compare UI at $SPIN_URL/"
 root_body="$(curl -fsS "$SPIN_URL/")"
 printf '%s' "$root_body" | python3 -c '
