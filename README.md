@@ -54,6 +54,7 @@ benchmarks/smoke_spin.sh
 
 The Spin service exposes:
 
+- `GET /` and `GET /dashboard` — side-by-side demo UI
 - `GET /health`
 - `GET /version`
 - `GET /stats`
@@ -106,6 +107,26 @@ The comparison script validates that Spin and OCI return the same engine name, s
 - `dark knight`
 - `romance`
 - empty query
+
+## Dashboard
+
+With both services running, open the side-by-side demo UI in a browser:
+
+```text
+http://127.0.0.1:8080/
+```
+
+The same dashboard is also served at `http://127.0.0.1:8081/` and `/dashboard`.
+It queries Spin (`:8080`) and OCI (`:8081`) in parallel, shows stats for each
+runtime, and highlights whether search hit IDs match.
+
+Optional macOS shortcut:
+
+```bash
+make demo-open
+```
+
+Source: [`dashboard/index.html`](dashboard/index.html).
 
 ## Run Benchmarks
 

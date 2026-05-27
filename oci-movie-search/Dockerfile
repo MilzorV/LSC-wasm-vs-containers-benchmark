@@ -3,6 +3,7 @@ FROM rust:1.82-bookworm AS build
 WORKDIR /app
 COPY spin-meili ./spin-meili
 COPY fixtures/movies.json ./fixtures/movies.json
+COPY dashboard ./dashboard
 
 RUN cargo build --manifest-path spin-meili/Cargo.toml --release -p oci-http-adapter
 

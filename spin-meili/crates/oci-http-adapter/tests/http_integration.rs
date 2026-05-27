@@ -83,6 +83,23 @@ fn health_version_stats_and_search_match_contract() {
 }
 
 #[test]
+fn dashboard_is_served_at_root() {
+    let port = free_port();
+    let child = start_server(port);
+    wait_for_health(port);
+
+    let response = ureq::get(&format!("http://127.0.0.1:{port}/"))
+        .call()
+        .expect("dashboard");
+    assert_eq!(response.status(), 200);
+    let body = response.into_string().expect("dashboard body");
+    assert!(body.contains("movie-search-dashboard"));
+    assert!(body.contains("Spin / WASM"));
+
+    stop_server(child);
+}
+
+#[test]
 fn unknown_route_returns_not_found() {
     let port = free_port();
     let child = start_server(port);

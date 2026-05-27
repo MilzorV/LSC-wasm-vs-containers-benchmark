@@ -29,5 +29,8 @@ report:
 demo:
 	@echo "See $(ROOT)/demo/demo-script.md"
 
+demo-open:
+	open http://127.0.0.1:8080/
+
 clean:
 	cd $(ROOT)/oci-movie-search && docker compose down --remove-orphans || true

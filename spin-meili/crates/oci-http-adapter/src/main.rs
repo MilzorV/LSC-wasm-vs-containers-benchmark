@@ -6,6 +6,7 @@ use serde::Serialize;
 use tiny_http::{Header, Request, Response, Server, StatusCode};
 
 const MOVIES_JSON: &str = include_str!("../../../../fixtures/movies.json");
+const DASHBOARD_HTML: &str = include_str!("../../../../dashboard/index.html");
 const DEFAULT_ADDR: &str = "0.0.0.0:7700";
 
 static ENGINE: OnceLock<MovieSearch> = OnceLock::new();
@@ -37,7 +38,17 @@ fn route(mut request: Request) -> RoutedResponse {
         .filter(|segment| !segment.is_empty())
         .collect::<Vec<_>>();
 
+    if method == "OPTIONS" && is_api_path(&segments) {
+        return RoutedResponse {
+            request,
+            response: with_cors(
+                Response::from_data(Vec::new()).with_status_code(StatusCode(204)),
+            ),
+        };
+    }
+
     let response = match (method.as_str(), segments.as_slice()) {
+        ("GET", []) | ("GET", ["dashboard"]) => Ok(html(200, DASHBOARD_HTML)),
         ("GET", ["health"]) => Ok(json(200, &engine().health())),
         ("GET", ["version"]) => Ok(json(200, &engine().version())),
         ("GET", ["stats"]) => Ok(json(200, &engine().stats())),
@@ -63,6 +74,13 @@ fn route(mut request: Request) -> RoutedResponse {
     .unwrap_or_else(|error| json(error.status, &error));
 
     RoutedResponse { request, response }
+}
+
+fn is_api_path(segments: &[&str]) -> bool {
+    matches!(
+        segments,
+        ["health"] | ["version"] | ["stats"] | ["movies"] | ["search"]
+    )
 }
 
 fn engine() -> &'static MovieSearch {
@@ -102,6 +120,31 @@ fn query_usize(query: &str, name: &str) -> Option<usize> {
     })
 }
 
+fn with_cors(response: Response<std::io::Cursor<Vec<u8>>>) -> Response<std::io::Cursor<Vec<u8>>> {
+    response
+        .with_header(cors_header("access-control-allow-origin", "*"))
+        .with_header(cors_header(
+            "access-control-allow-methods",
+            "GET, POST, OPTIONS",
+        ))
+        .with_header(cors_header("access-control-allow-headers", "content-type"))
+}
+
+fn cors_header(name: &str, value: &str) -> Header {
+    Header::from_bytes(name, value).expect("static cors header must be valid")
+}
+
+fn html(status: u16, body: &str) -> Response<std::io::Cursor<Vec<u8>>> {
+    with_cors(
+        Response::from_string(body)
+            .with_status_code(StatusCode(status))
+            .with_header(
+                Header::from_bytes("content-type", "text/html; charset=utf-8")
+                    .expect("static header must be valid"),
+            ),
+    )
+}
+
 fn json<T>(status: u16, value: &T) -> Response<std::io::Cursor<Vec<u8>>>
 where
     T: Serialize,
@@ -109,12 +152,14 @@ where
     let body = serde_json::to_vec(value)
         .unwrap_or_else(|_| br#"{"code":"internal","message":"serialization failed"}"#.to_vec());
 
-    Response::from_data(body)
-        .with_status_code(StatusCode(status))
-        .with_header(
-            Header::from_bytes("content-type", "application/json")
-                .expect("static header must be valid"),
-        )
+    with_cors(
+        Response::from_data(body)
+            .with_status_code(StatusCode(status))
+            .with_header(
+                Header::from_bytes("content-type", "application/json")
+                    .expect("static header must be valid"),
+            ),
+    )
 }
 
 struct RoutedResponse {

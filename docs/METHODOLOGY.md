@@ -26,6 +26,7 @@ The raw CSV source remains in `fixtures/movies_metadata.csv`.
 
 Both runtimes expose the same endpoints:
 
+- `GET /` and `GET /dashboard` — browser demo UI (presentation only, not benchmarked)
 - `GET /health`
 - `GET /version`
 - `GET /stats`
@@ -99,6 +100,9 @@ With both services running:
 ```bash
 benchmarks/compare_results.sh
 ```
+
+For live presentation, the dashboard at `http://127.0.0.1:8080/` provides the
+same parity check visually. It is not part of benchmark metrics.
 
 ## Benchmark Surface
 

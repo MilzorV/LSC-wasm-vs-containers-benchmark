@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>movie-search — Spin vs OCI</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --border: #2d3a4d;
+      --text: #e7ecf3;
+      --muted: #8b9cb3;
+      --spin: #6ee7b7;
+      --oci: #93c5fd;
+      --ok: #34d399;
+      --bad: #f87171;
+      --accent: #a78bfa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #151d29, var(--bg));
+    }
+    header h1 {
+      margin: 0 0 0.25rem;
+      font-size: 1.35rem;
+      font-weight: 650;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .movie-search-dashboard-marker { display: none; }
+    main { padding: 1.25rem 1.5rem 2rem; max-width: 1200px; margin: 0 auto; }
+    .search-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: end;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; color: var(--muted); }
+    input {
+      background: #0b1017;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.55rem 0.7rem;
+      min-width: 220px;
+      font-size: 1rem;
+    }
+    input[type="number"] { min-width: 80px; width: 80px; }
+    button {
+      background: var(--accent);
+      color: #111;
+      border: none;
+      border-radius: 6px;
+      padding: 0.65rem 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    button:hover { filter: brightness(1.08); }
+    .parity {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+      background: var(--panel);
+    }
+    .parity.match { color: var(--ok); border-color: #065f46; }
+    .parity.mismatch { color: var(--bad); border-color: #7f1d1d; }
+    .parity.pending { color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card.spin { border-top: 3px solid var(--spin); }
+    .card.oci { border-top: 3px solid var(--oci); }
+    .card-head {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .card-head h2 { margin: 0; font-size: 1rem; }
+    .card-head a { color: inherit; font-size: 0.85rem; opacity: 0.85; }
+    .meta {
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      gap: 0.25rem;
+    }
+    .meta .error { color: var(--bad); }
+    .results { padding: 0.75rem 1rem 1rem; }
+    .hit {
+      padding: 0.65rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .hit:last-child { border-bottom: none; }
+    .hit-id { font-size: 0.8rem; color: var(--muted); }
+    .hit-title { font-weight: 600; margin: 0.15rem 0; }
+    .hit-genre { font-size: 0.85rem; color: var(--muted); }
+    .empty { color: var(--muted); font-style: italic; }
+  </style>
+</head>
+<body data-app="movie-search-dashboard">
+  <span class="movie-search-dashboard-marker">movie-search</span>
+  <header>
+    <h1>Movie Search — Spin/WASM vs OCI</h1>
+    <p>Same Rust core, two isolation runtimes. Search both backends and compare hit IDs.</p>
+  </header>
+  <main>
+    <form class="search-bar" id="search-form">
+      <label>
+        Query
+        <input id="query" name="q" value="space" placeholder="e.g. space, toy story">
+      </label>
+      <label>
+        Limit
+        <input id="limit" name="limit" type="number" min="1" max="50" value="5">
+      </label>
+      <button type="submit">Search both</button>
+    </form>
+
+    <div id="parity" class="parity pending">Run a search to compare results</div>
+
+    <div class="grid">
+      <section class="card spin">
+        <div class="card-head">
+          <h2>Spin / WASM</h2>
+          <a id="spin-link" href="http://127.0.0.1:8080" target="_blank" rel="noopener">:8080</a>
+        </div>
+        <div class="meta" id="spin-meta">Loading…</div>
+        <div class="results" id="spin-results"><p class="empty">No search yet.</p></div>
+      </section>
+
+      <section class="card oci">
+        <div class="card-head">
+          <h2>OCI / Docker</h2>
+          <a id="oci-link" href="http://127.0.0.1:8081" target="_blank" rel="noopener">:8081</a>
+        </div>
+        <div class="meta" id="oci-meta">Loading…</div>
+        <div class="results" id="oci-results"><p class="empty">No search yet.</p></div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const SPIN_URL = params.get("spin") || "http://127.0.0.1:8080";
+    const OCI_URL = params.get("oci") || "http://127.0.0.1:8081";
+
+    document.getElementById("spin-link").href = SPIN_URL;
+    document.getElementById("spin-link").textContent = SPIN_URL.replace("http://", "");
+    document.getElementById("oci-link").href = OCI_URL;
+    document.getElementById("oci-link").textContent = OCI_URL.replace("http://", "");
+
+    async function fetchJson(base, path, options) {
+      const started = performance.now();
+      const res = await fetch(`${base}${path}`, options);
+      const elapsed = Math.round(performance.now() - started);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`${res.status} ${text}`);
+      }
+      const data = await res.json();
+      return { data, elapsed };
+    }
+
+    function renderMeta(el, info) {
+      if (info.error) {
+        el.innerHTML = `<span class="error">${info.error}</span>`;
+        return;
+      }
+      el.innerHTML = `
+        <div>Status: <strong>${info.health.status}</strong></div>
+        <div>Engine: ${info.version.engine} · docs: ${info.version.datasetDocuments.toLocaleString()}</div>
+        <div>documentCount: ${info.stats.documentCount.toLocaleString()}</div>
+      `;
+    }
+
+    function renderHits(el, payload, elapsed) {
+      if (payload.error) {
+        el.innerHTML = `<p class="error">${payload.error}</p>`;
+        return;
+      }
+      const { data, elapsed: ms } = payload;
+      const hits = data.hits || [];
+      if (!hits.length) {
+        el.innerHTML = `<p class="empty">No hits (${ms} ms round-trip)</p>`;
+        return;
+      }
+      el.innerHTML = hits.map(hit => `
+        <article class="hit">
+          <div class="hit-id">#${hit.id}</div>
+          <div class="hit-title">${escapeHtml(hit.title)}</div>
+          <div class="hit-genre">${escapeHtml(hit.genre)} · ${data.processingTimeMs ?? "?"} ms server</div>
+        </article>
+      `).join("") + `<p class="empty">${hits.length} hit(s) · ${ms} ms round-trip</p>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function hitIds(payload) {
+      if (!payload || payload.error) return null;
+      return (payload.data.hits || []).map(h => h.id);
+    }
+
+    function updateParity(spinPayload, ociPayload) {
+      const el = document.getElementById("parity");
+      const spinIds = hitIds(spinPayload);
+      const ociIds = hitIds(ociPayload);
+      if (spinIds === null || ociIds === null) {
+        el.className = "parity mismatch";
+        el.textContent = "Could not compare — one or both backends failed";
+        return;
+      }
+      const match = spinIds.length === ociIds.length &&
+        spinIds.every((id, i) => id === ociIds[i]);
+      el.className = match ? "parity match" : "parity mismatch";
+      el.textContent = match
+        ? `Match — identical hit IDs (${spinIds.join(", ")})`
+        : `Mismatch — Spin [${spinIds.join(", ")}] vs OCI [${ociIds.join(", ")}]`;
+    }
+
+    async function loadStatus(base) {
+      try {
+        const [health, version, stats] = await Promise.all([
+          fetchJson(base, "/health"),
+          fetchJson(base, "/version"),
+          fetchJson(base, "/stats"),
+        ]);
+        return {
+          health: health.data,
+          version: version.data,
+          stats: stats.data,
+        };
+      } catch (err) {
+        return { error: err.message };
+      }
+    }
+
+    async function search(base, q, limit) {
+      try {
+        return await fetchJson(base, "/search", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ q, limit }),
+        });
+      } catch (err) {
+        return { error: err.message };
+      }
+    }
+
+    async function refreshStatus() {
+      const [spinInfo, ociInfo] = await Promise.all([
+        loadStatus(SPIN_URL),
+        loadStatus(OCI_URL),
+      ]);
+      renderMeta(document.getElementById("spin-meta"), spinInfo);
+      renderMeta(document.getElementById("oci-meta"), ociInfo);
+    }
+
+    document.getElementById("search-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const q = document.getElementById("query").value;
+      const limit = Number(document.getElementById("limit").value) || 5;
+      const [spinPayload, ociPayload] = await Promise.all([
+        search(SPIN_URL, q, limit),
+        search(OCI_URL, q, limit),
+      ]);
+      renderHits(document.getElementById("spin-results"), spinPayload);
+      renderHits(document.getElementById("oci-results"), ociPayload);
+      updateParity(spinPayload, ociPayload);
+    });
+
+    refreshStatus();
+  </script>
+</body>
+</html>

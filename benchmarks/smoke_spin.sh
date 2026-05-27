@@ -7,6 +7,15 @@ echo "Checking Spin movie-search health at $SPIN_URL/health"
 curl -fsS "$SPIN_URL/health"
 echo
 
+echo "Checking Spin dashboard at $SPIN_URL/"
+curl -fsS "$SPIN_URL/" | python3 -c '
+import sys
+body = sys.stdin.read()
+assert "movie-search-dashboard" in body, "dashboard marker missing"
+print("dashboard ok")
+'
+echo
+
 echo "Checking Spin movie-search version"
 curl -fsS "$SPIN_URL/version"
 echo

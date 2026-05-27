@@ -37,6 +37,21 @@ Oczekiwany wynik dla obu usług:
 
 ## Demo Na Żywo
 
+0. Otwórz dashboard w przeglądarce:
+
+```text
+http://127.0.0.1:8080/
+```
+
+Wpisz `space`, kliknij **Search both**. Oczekiwane: obie kolumny pokazują
+`62, 957, 1542...` i badge **Match**.
+
+Alternatywnie:
+
+```bash
+make demo-open
+```
+
 1. Pokaż wersję silnika:
 
 ```bash
@@ -109,6 +124,7 @@ Pokaż wykresy:
 Krótka narracja:
 
 - To nie są dwie różne wyszukiwarki, tylko jeden Rust core w dwóch izolacjach.
+- Dashboard w przeglądarce pokazuje parytet wizualnie; curl i `compare_results.sh` to backup.
 - Najpierw udowadniamy zgodność funkcjonalną, dopiero potem rozmawiamy o wydajności.
 - Full benchmark nie jest odpalany na żywo, bo trwa około kilku-kilkunastu minut.
 - Wyniki są już zapisane w CSV i na wykresach, więc demo jest reprodukowalne.

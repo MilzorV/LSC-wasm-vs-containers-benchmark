@@ -6,6 +6,7 @@ use spin_sdk::http::{IntoResponse, Method, Request, Response};
 use spin_sdk::http_component;
 
 const MOVIES_JSON: &str = include_str!("../../../../fixtures/movies.json");
+const DASHBOARD_HTML: &str = include_str!("../../../../dashboard/index.html");
 
 static ENGINE: OnceLock<MovieSearch> = OnceLock::new();
 
@@ -24,7 +25,12 @@ fn route(req: Request) -> Response {
         .filter(|segment| !segment.is_empty())
         .collect::<Vec<_>>();
 
+    if method == "OPTIONS" && is_api_path(&segments) {
+        return build_response(204, None, String::new());
+    }
+
     let result = match (method, segments.as_slice()) {
+        ("GET", []) | ("GET", ["dashboard"]) => Ok(html(200, DASHBOARD_HTML)),
         ("GET", ["health"]) => Ok(json(200, &engine().health())),
         ("GET", ["version"]) => Ok(json(200, &engine().version())),
         ("GET", ["stats"]) => Ok(json(200, &engine().stats())),
@@ -49,6 +55,13 @@ fn route(req: Request) -> Response {
     };
 
     result.unwrap_or_else(|error| json(error.status, &error))
+}
+
+fn is_api_path(segments: &[&str]) -> bool {
+    matches!(
+        segments,
+        ["health"] | ["version"] | ["stats"] | ["movies"] | ["search"]
+    )
 }
 
 fn engine() -> &'static MovieSearch {
@@ -97,6 +110,27 @@ fn method_name(method: &Method) -> &'static str {
     }
 }
 
+fn cors_headers(builder: &mut spin_sdk::http::ResponseBuilder) {
+    builder
+        .header("access-control-allow-origin", "*")
+        .header("access-control-allow-methods", "GET, POST, OPTIONS")
+        .header("access-control-allow-headers", "content-type");
+}
+
+fn build_response(status: u16, content_type: Option<&str>, body: String) -> Response {
+    let mut builder = Response::builder();
+    builder.status(status);
+    cors_headers(&mut builder);
+    if let Some(content_type) = content_type {
+        builder.header("content-type", content_type);
+    }
+    builder.body(body).build()
+}
+
+fn html(status: u16, body: &str) -> Response {
+    build_response(status, Some("text/html; charset=utf-8"), body.to_string())
+}
+
 fn json<T>(status: u16, value: &T) -> Response
 where
     T: Serialize,
@@ -104,11 +138,7 @@ where
     let body = serde_json::to_string(value)
         .unwrap_or_else(|_| "{\"code\":\"internal\",\"message\":\"serialization failed\"}".into());
 
-    Response::builder()
-        .status(status)
-        .header("content-type", "application/json")
-        .body(body)
-        .build()
+    build_response(status, Some("application/json"), body)
 }
 
 #[derive(Debug, Serialize)]
