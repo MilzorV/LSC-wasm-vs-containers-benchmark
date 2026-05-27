@@ -9,6 +9,7 @@ import json
 import math
 import statistics
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 from benchmark_lib import (
@@ -39,7 +40,38 @@ def main() -> int:
     write_csv(RESULTS_PROCESSED / "memory_summary.csv", memory_summary)
 
     make_plots(cold_summary, load_summary, memory_summary)
+    write_dashboard_json(cold_summary, load_summary, memory_summary)
     return 0
+
+
+def write_dashboard_json(
+    cold_summary: list[dict[str, object]],
+    load_summary: list[dict[str, object]],
+    memory_summary: list[dict[str, object]],
+) -> None:
+    plots: list[dict[str, str]] = []
+    plot_specs = [
+        ("cold_start_p95.png", "Cold start (p95 ready ms)"),
+        ("load_latency_p95.png", "Load latency (p95)"),
+        ("load_throughput.png", "Load throughput"),
+        ("memory_peak.png", "Memory peak by source"),
+        ("memory_peak_host_rss.png", "Host RSS memory"),
+    ]
+    for filename, title in plot_specs:
+        path = RESULTS_PLOTS / filename
+        if path.exists():
+            plots.append({"path": f"plots/{filename}", "title": title})
+
+    payload = {
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "cold": cold_summary,
+        "load": load_summary,
+        "memory": memory_summary,
+        "plots": plots,
+    }
+    out = RESULTS_PROCESSED / "dashboard.json"
+    out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(f"Wrote {out}")
 
 
 def raw_paths(prefix: str, use_latest_only: bool) -> list[Path]:

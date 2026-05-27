@@ -26,9 +26,10 @@ The raw CSV source remains in `fixtures/movies_metadata.csv`.
 
 Both runtimes expose the same endpoints:
 
-- `GET /` — web app (search + browse)
-- `GET /demo` — runtime comparison demo (presentation only, not benchmarked)
-- `GET /assets/*` — frontend static assets
+- `GET /` — runtime comparison UI (Spin vs OCI; presentation only, not benchmarked)
+- `GET /benchmarks` — benchmark dashboard (processed summaries + plots)
+- `GET /demo` — alias for `/`
+- `GET /assets/*`, `GET /benchmark-data/*` — frontend static assets
 - `GET /health`
 - `GET /version`
 - `GET /stats`
@@ -103,9 +104,9 @@ With both services running:
 benchmarks/compare_results.sh
 ```
 
-For live presentation, the web app at `http://127.0.0.1:8080/` is the product UI.
-The benchmark comparison page at `/demo` provides the same parity check visually.
-Neither is part of benchmark metrics.
+For live presentation, `http://127.0.0.1:8080/` compares Spin and OCI side by side.
+`http://127.0.0.1:8080/benchmarks` shows processed benchmark artifacts.
+Neither page is part of benchmark metrics.
 
 ## Benchmark Surface
 

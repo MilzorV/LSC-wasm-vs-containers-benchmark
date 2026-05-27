@@ -93,14 +93,14 @@ fn app_is_served_at_root() {
         .expect("app root");
     assert_eq!(response.status(), 200);
     let body = response.into_string().expect("app body");
-    assert!(body.contains("movie-search-app"));
-    assert!(body.contains("Movie Search"));
+    assert!(body.contains("movie-search-compare"));
+    assert!(body.contains("Runtime comparison"));
 
     stop_server(child);
 }
 
 #[test]
-fn demo_is_served_at_demo_route() {
+fn demo_alias_serves_compare_app() {
     let port = free_port();
     let child = start_server(port);
     wait_for_health(port);
@@ -110,7 +110,47 @@ fn demo_is_served_at_demo_route() {
         .expect("demo route");
     assert_eq!(response.status(), 200);
     let body = response.into_string().expect("demo body");
-    assert!(body.contains("movie-search-demo"));
+    assert!(body.contains("movie-search-compare"));
+
+    stop_server(child);
+}
+
+#[test]
+fn benchmarks_page_is_served() {
+    let port = free_port();
+    let child = start_server(port);
+    wait_for_health(port);
+
+    let response = ureq::get(&format!("http://127.0.0.1:{port}/benchmarks"))
+        .call()
+        .expect("benchmarks route");
+    assert_eq!(response.status(), 200);
+    let body = response.into_string().expect("benchmarks body");
+    assert!(body.contains("movie-search-benchmarks"));
+
+    stop_server(child);
+}
+
+#[test]
+fn assets_are_served_under_assets_prefix() {
+    let port = free_port();
+    let child = start_server(port);
+    wait_for_health(port);
+
+    let root = ureq::get(&format!("http://127.0.0.1:{port}/"))
+        .call()
+        .expect("root")
+        .into_string()
+        .expect("root body");
+    let asset_path = root
+        .split("href=\"/assets/")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .expect("built index should reference /assets/");
+    let response = ureq::get(&format!("http://127.0.0.1:{port}/assets/{asset_path}"))
+        .call()
+        .expect("asset");
+    assert_eq!(response.status(), 200);
 
     stop_server(child);
 }

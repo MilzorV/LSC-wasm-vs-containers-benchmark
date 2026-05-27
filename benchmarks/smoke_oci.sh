@@ -7,13 +7,28 @@ echo "Checking OCI movie-search health at $OCI_URL/health"
 curl -fsS "$OCI_URL/health"
 echo
 
-echo "Checking OCI app UI at $OCI_URL/"
-curl -fsS "$OCI_URL/" | python3 -c '
+echo "Checking OCI compare UI at $OCI_URL/"
+root_body="$(curl -fsS "$OCI_URL/")"
+printf '%s' "$root_body" | python3 -c '
 import sys
 body = sys.stdin.read()
-assert "movie-search-app" in body, "app marker missing"
-print("app ui ok")
+assert "movie-search-compare" in body, "compare app marker missing"
+assert "/assets/" in body, "built assets reference missing"
+print("compare ui ok")
 '
+echo
+
+asset_path="$(printf '%s' "$root_body" | python3 -c '
+import sys
+body = sys.stdin.read()
+marker = "href=\"/assets/"
+start = body.find(marker)
+assert start != -1, "no /assets/ link in index"
+rest = body[start + len(marker):]
+print(rest.split("\"")[0])
+')"
+echo "Checking OCI static asset at $OCI_URL/assets/$asset_path"
+curl -fsS -o /dev/null -w "HTTP %{http_code}\n" "$OCI_URL/assets/$asset_path"
 echo
 
 echo "Checking OCI movie-search version"

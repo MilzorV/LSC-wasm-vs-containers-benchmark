@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Benchmarks — Movie Search</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="/src/benchmarks.css" />
+  </head>
+  <body data-app="movie-search-benchmarks">
+    <header class="site-header">
+      <div class="brand">
+        <h1>Benchmark dashboard</h1>
+        <p id="bench-status">Loading results…</p>
+      </div>
+      <nav class="header-nav">
+        <a class="back-link" href="/">← Compare runtimes</a>
+      </nav>
+    </header>
+
+    <main class="container container-wide">
+      <section class="bench-controls">
+        <button type="button" class="btn" id="run-pilot">Run pilot</button>
+        <button type="button" class="btn primary" id="run-full">Run full</button>
+        <button type="button" class="btn" id="refresh-data">Refresh data</button>
+        <p id="helper-hint" class="helper-hint" hidden>
+          Start the benchmark helper: <code>make bench-ui</code> (listens on :8092)
+        </p>
+        <pre id="run-log" class="run-log" hidden></pre>
+      </section>
+
+      <section id="metrics-section" class="metrics-section" hidden>
+        <h2>Spin vs OCI</h2>
+        <div id="metric-cards" class="metric-cards"></div>
+      </section>
+
+      <section id="plots-section" class="plots-section" hidden>
+        <h2>Plots</h2>
+        <div id="plot-grid" class="plot-grid"></div>
+      </section>
+
+      <section id="tables-section" class="tables-section" hidden>
+        <h2>Summary tables</h2>
+        <div id="summary-tables"></div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/benchmarks/main.js"></script>
+  </body>
+</html>

@@ -2,14 +2,14 @@ import { resolve } from "node:path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "./",
+  base: "/",
   build: {
     outDir: "dist",
     emptyOutDir: true,
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
-        demo: resolve(__dirname, "demo/index.html"),
+        benchmarks: resolve(__dirname, "benchmarks/index.html"),
       },
     },
   },

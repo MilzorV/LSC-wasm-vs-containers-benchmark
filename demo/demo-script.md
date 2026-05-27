@@ -10,8 +10,8 @@ Zakładany czas: 3-4 minuty w prezentacji 10-12 minut.
 W terminalu 1:
 
 ```bash
-cd frontend && npm ci && npm run build
-cd ../spin-meili && spin build
+make frontend-build
+cd spin-meili && spin build
 spin up --listen 127.0.0.1:8080
 ```
 
@@ -22,7 +22,13 @@ cd oci-movie-search
 docker compose up --build
 ```
 
-W terminalu 3, z katalogu głównego repo:
+W terminalu 3 (opcjonalnie — przyciski „Run pilot” na dashboardzie):
+
+```bash
+make bench-ui
+```
+
+W terminalu 4, z katalogu głównego repo:
 
 ```bash
 curl -fsS http://127.0.0.1:8080/health
@@ -37,24 +43,27 @@ Oczekiwany wynik dla obu usług:
 
 ## Demo Na Żywo
 
-0. Otwórz aplikację w przeglądarce:
+1. Otwórz porównanie runtime'ów:
 
 ```text
 http://127.0.0.1:8080/
 ```
 
-Pokaż **Search** (`space`) i **Browse** — normalna aplikacja do wyszukiwania filmów.
-Kliknij kartę filmu, aby pokazać szczegóły.
+Wpisz `space` i kliknij **Search both** — obie kolumny (Spin `:8080` i OCI `:8081`)
+powinny pokazać te same tytuły i badge **Match**.
 
-Następnie otwórz demo porównawcze:
+Stary URL `/demo` nadal działa (alias do tej samej strony).
+
+2. Otwórz dashboard benchmarków:
 
 ```text
-http://127.0.0.1:8080/demo
+http://127.0.0.1:8080/benchmarks
 ```
 
-Wpisz `space` — obie kolumny (Spin i OCI) powinny pokazać te same tytuły i badge **Match**.
+Pokaż tabele i wykresy z ostatniego `make analyze`. Z uruchomionym `make bench-ui`
+możesz odpalić **Run pilot** z przeglądarki (kilka minut).
 
-1. Uruchom parytet wyników (backup):
+3. Backup — parytet w terminalu:
 
 ```bash
 benchmarks/compare_results.sh
@@ -66,23 +75,21 @@ Oczekiwane zakończenie:
 Spin and OCI movie-search results match.
 ```
 
-2. Pokaż artefakty benchmarku:
+4. Artefakty benchmarku:
 
 ```bash
 ls results/raw results/processed results/plots
 ```
 
-Wykresy: `results/plots/cold_start_p95.png`, `load_throughput.png`, `load_latency_p95.png`, `memory_peak.png`
-
 ## Komentarz Do Demo
 
 - To nie są dwie różne wyszukiwarki, tylko jeden Rust core w dwóch izolacjach.
-- `/` to normalna aplikacja; `/demo` to strona porównawcza na prezentację.
-- Full benchmark nie jest odpalany na żywo; wyniki są w CSV i na wykresach.
+- `/` to strona porównawcza Spin vs OCI; `/benchmarks` to wyniki pomiarów.
+- Pełny benchmark: `make benchmark` lub przycisk **Run full** (wymaga `make bench-ui`).
 
 ## Plan Awaryjny
 
 Jeżeli live runtime nie wystartuje:
 
-1. Pokaż `results/processed/*.csv` i wykresy z `results/plots/`.
-2. Wyjaśnij, że pełny benchmark był wykonany komendą `benchmarks/run_all.sh`.
+1. Pokaż `results/processed/*.csv`, `dashboard.json` i wykresy z `results/plots/`.
+2. Wyjaśnij, że pełny benchmark był wykonany komendą `make benchmark`.

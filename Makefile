@@ -1,4 +1,4 @@
-.PHONY: test build frontend-build smoke benchmark benchmark-pilot analyze report presentation demo demo-open clean
+.PHONY: test build frontend-build smoke benchmark benchmark-pilot analyze bench-ui report presentation demo demo-open clean
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
@@ -26,6 +26,9 @@ benchmark-pilot:
 analyze:
 	python3 $(ROOT)/benchmarks/analyze_results.py
 
+bench-ui:
+	python3 $(ROOT)/benchmarks/bench_ui_server.py
+
 report:
 	latexmk -pdf -outdir=$(ROOT)/report -interaction=nonstopmode -halt-on-error $(ROOT)/report/final-report.tex
 
@@ -33,7 +36,7 @@ presentation:
 	$(MAKE) -C $(ROOT)/presentation
 
 demo:
-	@echo "App: http://127.0.0.1:8080/  Compare demo: http://127.0.0.1:8080/demo"
+	@echo "Compare: http://127.0.0.1:8080/  Benchmarks: http://127.0.0.1:8080/benchmarks  Helper: make bench-ui (:8092)"
 
 demo-open:
 	open http://127.0.0.1:8080/

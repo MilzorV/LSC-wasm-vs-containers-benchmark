@@ -7,12 +7,43 @@ echo "Checking Spin movie-search health at $SPIN_URL/health"
 curl -fsS "$SPIN_URL/health"
 echo
 
-echo "Checking Spin app UI at $SPIN_URL/"
-curl -fsS "$SPIN_URL/" | python3 -c '
+echo "Checking Spin compare UI at $SPIN_URL/"
+root_body="$(curl -fsS "$SPIN_URL/")"
+printf '%s' "$root_body" | python3 -c '
 import sys
 body = sys.stdin.read()
-assert "movie-search-app" in body, "app marker missing"
-print("app ui ok")
+assert "movie-search-compare" in body, "compare app marker missing"
+assert "/assets/" in body, "built assets reference missing"
+print("compare ui ok")
+'
+echo
+
+asset_path="$(printf '%s' "$root_body" | python3 -c '
+import sys
+body = sys.stdin.read()
+marker = "href=\"/assets/"
+start = body.find(marker)
+assert start != -1, "no /assets/ link in index"
+rest = body[start + len(marker):]
+print(rest.split("\"")[0])
+')"
+echo "Checking Spin static asset at $SPIN_URL/assets/$asset_path"
+curl -fsS -o /dev/null -w "HTTP %{http_code}\n" "$SPIN_URL/assets/$asset_path"
+echo
+
+echo "Checking Spin /demo alias"
+curl -fsS "$SPIN_URL/demo" | python3 -c '
+import sys
+assert "movie-search-compare" in sys.stdin.read()
+print("demo alias ok")
+'
+echo
+
+echo "Checking Spin /benchmarks page"
+curl -fsS "$SPIN_URL/benchmarks" | python3 -c '
+import sys
+assert "movie-search-benchmarks" in sys.stdin.read()
+print("benchmarks page ok")
 '
 echo
 

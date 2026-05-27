@@ -34,17 +34,28 @@ function updateParity(spinPayload, ociPayload) {
 
 function renderCompare(container, payload) {
   if (payload.error) {
-    container.innerHTML = `<p class="placeholder error">${escapeHtml(payload.error)}</p>`;
+    const hint =
+      payload.error.includes("Failed to fetch") || payload.error.includes("NetworkError")
+        ? "<br><small>Is the backend running? Spin: <code>spin up</code> · OCI: <code>docker compose up</code></small>"
+        : "";
+    container.innerHTML = `<p class="placeholder error">${escapeHtml(payload.error)}${hint}</p>`;
     return;
   }
   const hits = payload.data.hits || [];
+  const cards = hits.map((hit) => movieCard(hit)).join("");
   container.innerHTML =
     `<p class="results-meta">${hits.length} of ${payload.data.estimatedTotalHits} · ${payload.elapsed} ms</p>` +
-    hits.map((hit) => movieCard(hit)).join("") ||
-    `<p class="placeholder">No hits</p>`;
+    (cards || `<p class="placeholder">No hits</p>`);
 }
 
 async function compareSearch(query) {
+  const parity = document.getElementById("parity");
+  parity.className = "parity pending";
+  parity.textContent = "Searching…";
+
+  document.getElementById("spin-results").innerHTML = `<p class="placeholder">Searching…</p>`;
+  document.getElementById("oci-results").innerHTML = `<p class="placeholder">Searching…</p>`;
+
   const [spinPayload, ociPayload] = await Promise.all([
     remoteSearch(SPIN_URL, query).catch((error) => ({ error: error.message })),
     remoteSearch(OCI_URL, query).catch((error) => ({ error: error.message })),
@@ -56,7 +67,11 @@ async function compareSearch(query) {
 
 document.getElementById("compare-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  compareSearch(document.getElementById("compare-query").value.trim());
+  const query = document.getElementById("compare-query").value.trim();
+  if (!query) {
+    document.getElementById("parity").className = "parity pending";
+    document.getElementById("parity").textContent = "Enter a query to search";
+    return;
+  }
+  compareSearch(query);
 });
-
-compareSearch("space");

@@ -56,9 +56,10 @@ benchmarks/smoke_spin.sh
 
 The Spin service exposes:
 
-- `GET /` — Vite web app (search + browse)
-- `GET /demo` — runtime comparison demo (benchmark presentation)
-- `GET /assets/*` — frontend static assets
+- `GET /` — runtime comparison UI (Spin vs OCI search)
+- `GET /benchmarks` — benchmark dashboard (tables + plots)
+- `GET /demo` — alias for `/` (legacy URL)
+- `GET /assets/*`, `GET /benchmark-data/*` — frontend static assets
 - `GET /health`
 - `GET /version`
 - `GET /stats`
@@ -114,27 +115,33 @@ The comparison script validates that Spin and OCI return the same engine name, s
 
 ## Web app
 
-Build the frontend once, then start a backend:
+Build the frontend once (copies benchmark data into `dist/`), then start backends:
 
 ```bash
+make analyze          # optional: refresh dashboard.json and plots
 make frontend-build
 make build
 ```
 
-With Spin or OCI running, open the app:
+Start **both** Spin (`:8080`) and OCI (`:8081`) for the compare UI:
 
 ```text
 http://127.0.0.1:8080/
 ```
 
-- **Search** — full-text search with pagination (server default page size)
-- **Browse** — paginated catalog via `GET /movies`
-- **Movie details** — click any result card
+- **Search both** — same query against Spin and OCI; parity badge when rankings match
+- **`/demo`** — same page (legacy link)
 
-Runtime comparison demo (requires both services):
+Benchmark dashboard (embedded summaries from last `make analyze`):
 
 ```text
-http://127.0.0.1:8080/demo
+http://127.0.0.1:8080/benchmarks
+```
+
+To run benchmarks from the browser, start the local helper in another terminal:
+
+```bash
+make bench-ui   # http://127.0.0.1:8092
 ```
 
 Local frontend development (proxies API to Spin on `:8080`):
@@ -172,7 +179,7 @@ The full run builds both runtimes, runs smoke/parity checks, collects cold-start
 Outputs:
 
 - raw CSVs and service logs: `results/raw/`;
-- summary CSVs: `results/processed/`;
+- summary CSVs and `dashboard.json`: `results/processed/`;
 - plots: `results/plots/`;
 - LaTeX report source/PDF: `report/final-report.tex`, `report/final-report.pdf`;
 - presentation: `presentation/movie-search-spin-vs-oci.pptx`, `presentation/movie-search-spin-vs-oci.pdf`;

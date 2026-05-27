@@ -3,66 +3,48 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Movie Search</title>
+    <title>Runtime comparison — Movie Search</title>
     <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="/src/demo.css" />
   </head>
-  <body data-app="movie-search-app">
-    <header class="site-header">
+  <body data-app="movie-search-compare">
+    <header class="site-header demo-header">
       <div class="brand">
-        <h1>Movie Search</h1>
-        <p id="status-line">Loading catalog…</p>
+        <h1>Runtime comparison demo</h1>
+        <p>Same query against Spin/WASM and OCI/Docker — start both backends, then search.</p>
       </div>
-      <nav class="nav-tabs" role="tablist">
-        <button type="button" class="nav-tab active" data-view="search">Search</button>
-        <button type="button" class="nav-tab" data-view="browse">Browse</button>
+      <nav class="header-nav">
+        <a class="back-link" href="/benchmarks">Benchmarks dashboard →</a>
       </nav>
     </header>
 
-    <main class="container">
-      <section id="view-search" class="view active">
-        <form id="search-form" class="search-form">
-          <input
-            id="search-input"
-            type="search"
-            placeholder="Search by title, genre, or plot…"
-            autocomplete="off"
-          />
-          <button type="submit" class="btn primary">Search</button>
-        </form>
-        <div id="search-meta" class="results-meta" hidden></div>
-        <div id="search-results" class="movie-list">
-          <p class="placeholder">Enter a query to search 44,000+ movies.</p>
-        </div>
-        <div id="search-pager" class="pager" hidden>
-          <button type="button" class="btn" id="search-prev" disabled>Previous</button>
-          <button type="button" class="btn" id="search-next" disabled>Next</button>
-        </div>
-      </section>
-
-      <section id="view-browse" class="view">
-        <div id="browse-meta" class="results-meta"></div>
-        <div id="browse-results" class="movie-list">
-          <p class="placeholder">Loading catalog…</p>
-        </div>
-        <div class="pager">
-          <button type="button" class="btn" id="browse-prev" disabled>Previous</button>
-          <button type="button" class="btn" id="browse-next" disabled>Next</button>
-        </div>
-      </section>
+    <main class="container container-wide">
+      <form id="compare-form" class="search-form">
+        <input id="compare-query" type="search" value="space" placeholder="Search query…" />
+        <button type="submit" class="btn primary">Search both</button>
+      </form>
+      <div id="parity" class="parity pending">Search to compare runtimes</div>
+      <div class="compare-grid">
+        <section class="compare-col spin">
+          <h2>Spin / WASM · <span id="spin-label">:8080</span></h2>
+          <div id="spin-results" class="compare-results">
+            <p class="placeholder">Results appear here after search.</p>
+          </div>
+        </section>
+        <section class="compare-col oci">
+          <h2>OCI / Docker · <span id="oci-label">:8081</span></h2>
+          <div id="oci-results" class="compare-results">
+            <p class="placeholder">Results appear here after search.</p>
+          </div>
+        </section>
+      </div>
     </main>
 
     <footer class="site-footer">
-      <span id="engine-line"></span>
-      <a href="./demo/">Runtime comparison demo</a>
+      <span>Spin <code>:8080</code> · OCI <code>:8081</code></span>
+      <span>Dataset: 44,471 movies</span>
     </footer>
 
-    <dialog id="movie-dialog" class="movie-dialog">
-      <article id="movie-detail"></article>
-      <form method="dialog">
-        <button type="submit" class="btn">Close</button>
-      </form>
-    </dialog>
-
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/compare/main.js"></script>
   </body>
 </html>

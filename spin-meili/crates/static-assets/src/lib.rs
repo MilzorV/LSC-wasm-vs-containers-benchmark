@@ -10,8 +10,14 @@ pub struct StaticFile {
 pub fn lookup(segments: &[&str]) -> Option<StaticFile> {
     let path = match segments {
         [] => "index.html",
-        ["demo"] => "demo/index.html",
-        ["assets", rest @ ..] if !rest.is_empty() => return lookup_path(&join_segments(rest)),
+        ["demo"] | ["demo", "index.html"] => "index.html",
+        ["benchmarks"] | ["benchmarks", "index.html"] => "benchmarks/index.html",
+        ["assets", rest @ ..] if !rest.is_empty() => {
+            return lookup_path(&format!("assets/{}", join_segments(rest)));
+        }
+        ["benchmark-data", rest @ ..] if !rest.is_empty() => {
+            return lookup_path(&format!("benchmark-data/{}", join_segments(rest)));
+        }
         _ => return None,
     };
 
@@ -54,11 +60,38 @@ fn content_type_for_path(path: &str) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::lookup;
+    use super::{lookup, FRONTEND};
 
     #[test]
-    fn serves_app_and_demo_entrypoints() {
+    fn serves_app_and_benchmark_entrypoints() {
         assert!(lookup(&[]).is_some());
         assert!(lookup(&["demo"]).is_some());
+        assert!(lookup(&["benchmarks"]).is_some());
+    }
+
+    #[test]
+    fn serves_hashed_assets_under_assets_prefix() {
+        let assets_dir = FRONTEND
+            .get_dir("assets")
+            .expect("run make frontend-build before cargo test");
+        let file = assets_dir
+            .files()
+            .next()
+            .expect("dist/assets must contain built files");
+        let name = file
+            .path()
+            .file_name()
+            .and_then(|n| n.to_str())
+            .expect("asset file name");
+        let served = lookup(&["assets", name]).expect("GET /assets/{name} must resolve");
+        assert!(!served.contents.is_empty());
+    }
+
+    #[test]
+    fn serves_benchmark_data_when_present() {
+        if lookup(&["benchmark-data", "dashboard.json"]).is_some() {
+            let json = lookup(&["benchmark-data", "dashboard.json"]).unwrap();
+            assert_eq!(json.content_type, "application/json; charset=utf-8");
+        }
     }
 }

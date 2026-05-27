@@ -1,3 +1,13 @@
+.container-wide {
+  max-width: 1200px;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .demo-header {
   align-items: flex-start;
 }
