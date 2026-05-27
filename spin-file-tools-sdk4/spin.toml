@@ -1,0 +1,19 @@
+spin_manifest_version = 2
+
+[application]
+name = "spin-file-tools"
+version = "0.1.2"
+authors = ["benchmark"]
+description = "Spin/Wasm service for JSON validation, CSV<->JSON conversion and simple image transformations"
+
+[[trigger.http]]
+route = "/..."
+component = "api"
+
+[component.api]
+source = "target/wasm32-wasip2/release/spin_file_tools.wasm"
+allowed_outbound_hosts = []
+
+[component.api.build]
+command = "cargo build --target wasm32-wasip2 --release"
+watch = ["Cargo.toml", "src/**/*.rs"]

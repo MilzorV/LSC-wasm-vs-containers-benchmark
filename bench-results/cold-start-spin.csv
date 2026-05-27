@@ -1,0 +1,6 @@
+service,repeat,time_to_health_ms,first_health_request_ms,total_cold_health_ms,notes
+spin,1,526,23,553,spin_pid=25000
+spin,2,524,28,553,spin_pid=2040
+spin,3,533,26,560,spin_pid=25304
+spin,4,535,25,561,spin_pid=24628
+spin,5,543,15,559,spin_pid=2156
