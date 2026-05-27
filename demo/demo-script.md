@@ -37,20 +37,17 @@ Oczekiwany wynik dla obu usług:
 
 ## Demo Na Żywo
 
-0. Otwórz dashboard w przeglądarce:
+0. Otwórz aplikację w przeglądarce:
 
 ```text
 http://127.0.0.1:8080/
 ```
 
-Wpisz `space`, kliknij **Search both**. Oczekiwane: obie kolumny pokazują
-`62, 957, 1542...` i badge **Match**.
+Zakładka **Search** — wyszukiwarka filmów (wybierz backend Spin lub OCI).
+Zakładka **Browse** — przeglądanie katalogu z paginacją.
+Zakładka **Compare runtimes** — to samo zapytanie na obu runtime'ach i badge **Match**.
 
-Alternatywnie:
-
-```bash
-make demo-open
-```
+W **Compare** wpisz `space` — obie kolumny powinny pokazać te same tytuły (pierwsze ID: 62, 957, 1542…).
 
 1. Pokaż wersję silnika:
 

@@ -110,15 +110,17 @@ The comparison script validates that Spin and OCI return the same engine name, s
 
 ## Dashboard
 
-With both services running, open the side-by-side demo UI in a browser:
+With both services running, open the movie search app in a browser:
 
 ```text
 http://127.0.0.1:8080/
 ```
 
-The same dashboard is also served at `http://127.0.0.1:8081/` and `/dashboard`.
-It queries Spin (`:8080`) and OCI (`:8081`) in parallel, shows stats for each
-runtime, and highlights whether search hit IDs match.
+- **Search** — full-text search with pagination (server default page size, no client limit)
+- **Browse** — paginated catalog via `GET /movies`
+- **Compare runtimes** — side-by-side Spin vs OCI parity view for demos
+
+Switch backend (Spin or OCI) in the header when using Search or Browse.
 
 Optional macOS shortcut:
 
