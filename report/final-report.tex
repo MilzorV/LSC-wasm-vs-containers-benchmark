@@ -2,7 +2,7 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[polish]{babel}
+\usepackage[english]{babel}
 \usepackage{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -27,82 +27,73 @@
 \setlist[enumerate]{topsep=2pt,itemsep=2pt,parsep=0pt}
 \emergencystretch=3em
 
-\title{\textbf{Movie Search na Spin/WASM i OCI}\\
-\large Porównanie WebAssembly jako izolacji dla mikroserwisów}
-\author{Projekt LSC}
-\date{24 maja 2026}
+\title{\textbf{Movie Search on Spin/WASM and OCI}\\
+\large Comparing WebAssembly as isolation for microservices}
+\author{LSC Project}
+\date{24 May 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Projekt porównuje tę samą aplikację HTTP uruchomioną w dwóch modelach izolacji:
-Spin/wasmtime jako komponent WASI oraz natywny serwer Rust zapakowany jako obraz
-OCI. Po wstępnej analizie porzucono próbę porównywania Spin z pełnym
-Meilisearch, ponieważ oficjalny Meilisearch używa LMDB i założeń typowych dla
-native runtime, których nie dało się przenieść 1:1 do środowiska WASI w czasie
-projektu. Zamiast tego zbudowano własny, deterministyczny serwis
-\texttt{movie-search}, w którym Spin i OCI współdzielą ten sam kod aplikacyjny,
-fixture oraz semantykę API. Wyniki pokazują pełną zgodność funkcjonalną, krótszy
-pierwszy request wyszukiwania po stronie Spin, bardzo szybkie odpowiedzi OCI dla
-prostego pustego zapytania oraz wyraźnie większy obserwowany RSS procesu Spin
-pod obciążeniem. Wnioskiem jest, że Spin/WASM jest sensownym kandydatem dla
-izolowanych, krótkich mikroserwisów HTTP, ale kontenery OCI pozostają bardziej
-dojrzałym i przewidywalnym wyborem operacyjnym, zwłaszcza przy usługach
-storage-heavy.
+This project compares the same HTTP application running under two isolation models:
+Spin/wasmtime as a WASI component and a native Rust server packaged as an OCI image.
+After an initial analysis, we abandoned comparing Spin with full Meilisearch, because
+official Meilisearch relies on LMDB and assumptions typical of native runtimes that could
+not be ported 1:1 to WASI within the project timeline. Instead, we built a custom,
+deterministic \texttt{movie-search} service in which Spin and OCI share the same application
+code, fixture, and API semantics. Results show full functional parity, a shorter first
+search request on Spin, very fast OCI responses for a simple empty query, and a clearly
+larger observed Spin process RSS under load. We conclude that Spin/WASM is a reasonable
+candidate for isolated, short-lived HTTP microservices, but OCI containers remain a more
+mature and predictable operational choice, especially for storage-heavy services.
 \end{abstract}
 
-\section{Cel i kontekst}
+\section{Goal and context}
 
-Tematem projektu było sprawdzenie, czy WebAssembly uruchamiane przez Spin i
-wasmtime może być praktycznym podłożem izolacji dla mikroserwisów typu
-serverless w porównaniu z klasycznym kontenerem OCI. WebAssembly jest binarnym
-formatem instrukcji projektowanym jako przenośny cel kompilacji dla języków
-programowania, także poza przeglądarką \cite{webassembly}. WASI rozszerza ten
-model o interfejsy systemowe, np. pliki, sieć, zegary i losowość, zachowując
-kontrolowany model uprawnień \cite{wasmtime-intro,wasi-interfaces}. Spin jest
-frameworkiem do budowania mikroserwisów i aplikacji WebAssembly, z prostym
-cyklem \texttt{spin build} oraz \texttt{spin up}, obsługą HTTP triggerów i
-języków zgodnych z WASI \cite{spin}. Wasmtime pełni w tym układzie rolę runtime
-dla WebAssembly, WASI i Component Model \cite{wasmtime-intro}.
+The project examined whether WebAssembly run via Spin and wasmtime can serve as a practical
+isolation substrate for serverless-style microservices compared with a classic OCI container.
+WebAssembly is a binary instruction format designed as a portable compilation target for
+programming languages, including outside the browser \cite{webassembly}. WASI extends this
+model with system interfaces such as files, networking, clocks, and randomness while keeping
+a controlled permission model \cite{wasmtime-intro,wasi-interfaces}. Spin is a framework for
+building WebAssembly microservices and applications, with a simple \texttt{spin build} and
+\texttt{spin up} workflow, HTTP triggers, and WASI-compatible languages \cite{spin}. Wasmtime
+acts as the runtime for WebAssembly, WASI, and the Component Model in this stack
+\cite{wasmtime-intro}.
 
-Punktem odniesienia jest OCI: otwarty standard opisu obrazów i uruchamiania
-kontenerów, zbudowany wokół specyfikacji runtime, image i distribution
-\cite{oci}. Kontener Docker pakuje aplikację oraz zależności w standaryzowaną
-jednostkę uruchomieniową, izolowaną od środowiska hosta i przenośną pomiędzy
-środowiskami \cite{docker-container}. Pytanie badawcze brzmi więc: co dostajemy,
-gdy ten sam kod aplikacyjny uruchomimy raz jako komponent WASI, a raz jako
-natywny proces w kontenerze?
+The reference point is OCI: an open standard for describing and running container images,
+built around runtime, image, and distribution specifications \cite{oci}. A Docker container
+packages an application and its dependencies into a standardized unit that is isolated from
+the host and portable across environments \cite{docker-container}. The research question is
+therefore: what do we get when we run the same application code once as a WASI component and
+once as a native process in a container?
 
-\section{Pivot z Meilisearch}
+\section{Pivot away from Meilisearch}
 
-Pierwszy kierunek zakładał porównanie Meilisearch w kontenerze z wariantem
-uruchamianym przez Spin. Analiza feasibility pokazała jednak, że byłoby to
-porównanie nieuczciwe technicznie. Oficjalny Meilisearch przechowuje dane w
-\texttt{data.ms} i używa LMDB jako silnika storage; LMDB opiera się na pliku
-mapowanym w pamięci \cite{meilisearch-storage}. Backupy Meilisearch rozróżniają
-snapshoty, czyli kopię bazy \texttt{data.ms}, oraz dumpy przenośne między
-wersjami Meilisearch \cite{meilisearch-backup}. To nadal jest model danych
-Meilisearch, a nie przenośny indeks dla własnego komponentu WASI.
+The first direction assumed comparing Meilisearch in a container with a Spin-hosted variant.
+A feasibility analysis showed that this would be technically unfair. Official Meilisearch
+stores data in \texttt{data.ms} and uses LMDB as its storage engine; LMDB relies on
+memory-mapped files \cite{meilisearch-storage}. Meilisearch backups distinguish snapshots,
+i.e.\ a copy of the \texttt{data.ms} database, from dumps portable across Meilisearch versions
+\cite{meilisearch-backup}. That remains Meilisearch's data model, not a portable index for a
+custom WASI component.
 
-Dodatkowo lokalne próby kompilacji upstreamowych warstw Meilisearch do
-\texttt{wasm32-wasip2} zatrzymały się na zależnościach takich jak \texttt{ring},
-Tokio oraz przewidywanych blokadach storage związanych z LMDB i mmap. Dlatego
-projekt zmieniono z ``portujemy Meilisearch'' na ``porównujemy ten sam własny
-mikroserwis w dwóch izolacjach runtime''. Dzięki temu benchmark mierzy różnicę
-uruchomienia i izolacji, a nie różnicę semantyki wyszukiwarki.
+In addition, local attempts to compile upstream Meilisearch layers to \texttt{wasm32-wasip2}
+stopped on dependencies such as \texttt{ring}, Tokio, and expected storage blockers related
+to LMDB and mmap. The project therefore shifted from ``port Meilisearch'' to ``compare the
+same custom microservice under two runtime isolations.'' The benchmark thus measures
+deployment and isolation differences, not search-engine semantics.
 
-\section{Aplikacja i architektura}
+\section{Application and architecture}
 
-Końcowa aplikacja to \texttt{movie-search}: prosty serwis HTTP napisany w Rust.
-Oba runtime'y używają tej samej biblioteki \texttt{movie-search-core}, tego
-samego pliku \texttt{fixtures/movies.json} i tych samych reguł rankingu.
-Fixture zawiera 44\,471 unikalnych filmów po deduplikacji po polu
-\texttt{id}. Wyszukiwanie jest deterministyczne: tokenizacja po znakach
-niealfanumerycznych, dopasowanie przez case-insensitive substring, sortowanie po
-liczbie trafionych tokenów, wadze pól \texttt{title > genre > overview}, a na
-końcu po rosnącym \texttt{id}. Celowo nie zaimplementowano typo tolerance,
-synonimów ani reguł Meilisearch.
+The final application is \texttt{movie-search}: a simple HTTP service written in Rust. Both
+runtimes use the same \texttt{movie-search-core} library, the same \texttt{fixtures/movies.json}
+file, and the same ranking rules. The fixture contains 44\,471 unique movies after deduplication
+by \texttt{id}. Search is deterministic: tokenization on non-alphanumeric characters,
+case-insensitive substring matching, sorting by the number of matched tokens, field weights
+\texttt{title > genre > overview}, and finally ascending \texttt{id}. Typo tolerance, synonyms,
+and Meilisearch-specific rules were intentionally not implemented.
 
 \begin{figure}[H]
 \centering
@@ -114,52 +105,48 @@ synonimów ani reguł Meilisearch.
 \node[core] (core) at (0,0) {\texttt{movie-search-core}\\Rust, fixture, ranking};
 \node[box] (spin) at (-4.2,-2) {Spin adapter\\WASI HTTP component};
 \node[box] (oci) at (4.2,-2) {OCI adapter\\native Rust HTTP server};
-\node[box] (client) at (0,-4) {Ten sam klient benchmarkowy\\smoke, parity, load, memory};
+\node[box] (client) at (0,-4) {Same benchmark client\\smoke, parity, load, memory};
 \draw[arrow] (core) -- (spin);
 \draw[arrow] (core) -- (oci);
 \draw[arrow] (client) -- (spin);
 \draw[arrow] (client) -- (oci);
 \end{tikzpicture}
-\caption{Architektura końcowa: jeden core aplikacyjny, dwa adaptery runtime.}
+\caption{Final architecture: one application core, two runtime adapters.}
 \end{figure}
 
-Publiczne API jest wspólne dla obu wariantów: \texttt{GET /health},
-\texttt{GET /version}, \texttt{GET /stats}, \texttt{GET /movies?offset=\&limit=}
-oraz \texttt{POST /search}. Spin działa lokalnie na porcie 8080, a wariant OCI
-na porcie 8081.
+The public API is shared by both variants: \texttt{GET /health}, \texttt{GET /version},
+\texttt{GET /stats}, \texttt{GET /movies?offset=\&limit=}, and \texttt{POST /search}. Spin
+runs locally on port 8080, and the OCI variant on port 8081.
 
-\section{Metodyka}
+\section{Methodology}
 
-Przed pomiarem wydajności uruchamiane są testy jednostkowe, build komponentu
-Spin, build obrazu OCI oraz smoke/parity checks. Skrypt
-\texttt{benchmarks/compare\_results.sh} porównuje silnik, liczbę dokumentów,
-liczbę trafień i listy \texttt{hit.id} dla zapytań \texttt{space},
-\texttt{toy story}, \texttt{dark knight}, \texttt{romance} i zapytania pustego.
+Before performance measurement, we run unit tests, build the Spin component, build the OCI
+image, and run smoke/parity checks. The script \texttt{benchmarks/compare\_results.sh} compares
+engine, document count, hit count, and \texttt{hit.id} lists for queries \texttt{space},
+\texttt{toy story}, \texttt{dark knight}, \texttt{romance}, and the empty query.
 
-Pełny benchmark uruchomiono komendą \texttt{benchmarks/run\_all.sh}. Obejmuje on
-20 powtórzeń cold start, testy obciążeniowe \texttt{POST /search} dla zapytań
-\texttt{space} i pustego przy współbieżności 10, 50, 100 i 200, oraz próbki
-pamięci w stanie idle i under-load. Środowisko: Apple M4, 10 rdzeni, 24 GiB RAM,
-macOS 15.6, Spin 3.6.3, Docker 28.5.1, Rust 1.95.0. Obraz Docker był budowany
-przed pomiarem cold start; czas budowania nie jest częścią wyniku.
+The full benchmark was run with \texttt{benchmarks/run\_all.sh}. It includes 20 cold-start
+repetitions, load tests on \texttt{POST /search} for queries \texttt{space} and empty at
+concurrency 10, 50, 100, and 200, and memory samples in idle and under-load states.
+Environment: Apple M4, 10 cores, 24 GiB RAM, macOS 15.6, Spin 3.6.3, Docker 28.5.1, Rust
+1.95.0. The Docker image was built before the cold-start measurement; build time is not part
+of the result.
 
-Ważne ograniczenie dotyczy pamięci. OCI jest mierzone przez \texttt{docker stats}
-i odzwierciedla perspektywę kontenera. Spin jest mierzony jako RSS drzewa
-procesów hosta. Te liczby są użyteczne do porównania obserwowanego narzutu, ale
-nie są identyczną warstwą rachunkowości pamięci.
+An important limitation concerns memory. OCI is measured via \texttt{docker stats} and reflects
+the container's perspective. Spin is measured as host process-tree RSS. These numbers are useful
+for comparing observed overhead but are not an identical memory accounting layer.
 
-\section{Wyniki}
+\section{Results}
 
-Wszystkie testy funkcjonalne i obciążeniowe zakończyły się bez błędów walidacji
-odpowiedzi. Parity check potwierdził identyczne wyniki funkcjonalne dla obu
-runtime'ów.
+All functional and load tests completed without response validation errors. The parity check
+confirmed identical functional results for both runtimes.
 
 \begin{table}[H]
 \centering
-\caption{Cold start: 20 powtórzeń na system.}
+\caption{Cold start: 20 repetitions per system.}
 \begin{tabular}{llrrrr}
 \toprule
-System & Metryka & Mediana [ms] & p95 [ms] & p99 [ms] & Błędy \\
+System & Metric & Median [ms] & p95 [ms] & p99 [ms] & Errors \\
 \midrule
 OCI & \texttt{/health} & 20.982 & 28.420 & 36.325 & 0 \\
 OCI & \texttt{/health + /search} & 307.755 & 376.983 & 446.288 & 0 \\
@@ -172,18 +159,17 @@ Spin & \texttt{/health + /search} & 205.649 & 217.504 & 218.947 & 0 \\
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.62\linewidth]{cold_start_p95.png}
-\caption{p95 cold start do pierwszego poprawnego \texttt{/health}.}
+\caption{p95 cold start until the first successful \texttt{/health}.}
 \end{figure}
 
-W tym środowisku kontener szybciej osiągał gotowość \texttt{/health}, natomiast
-Spin szybciej wykonywał sekwencję cold start plus pierwsze wyszukiwanie. Wynik
-ten warto interpretować jako cechę konkretnej implementacji i sposobu pomiaru:
-\texttt{/health} jest tanim endpointem gotowości, a \texttt{/search} uruchamia
-realny przepływ pracy aplikacji.
+In this environment, the container reached \texttt{/health} readiness faster, while Spin
+completed the cold start plus first search sequence faster. This should be interpreted as a
+property of the specific implementation and measurement approach: \texttt{/health} is a cheap
+readiness endpoint, whereas \texttt{/search} exercises the application's real work path.
 
 \begin{table}[H]
 \centering
-\caption{Load test: request rate i p95 latency.}
+\caption{Load test: request rate and p95 latency.}
 \resizebox{\linewidth}{!}{
 \begin{tabular}{llrrrrrrrr}
 \toprule
@@ -204,23 +190,22 @@ Spin & space & 77.2 & 168.3 & 70.3 & 1264.6 & 74.5 & 2491.2 & 78.3 & 6073.3 \\
 \centering
 \includegraphics[width=0.49\linewidth]{load_throughput.png}
 \includegraphics[width=0.49\linewidth]{load_latency_p95.png}
-\caption{Przepustowość i p95 latency dla \texttt{POST /search}.}
+\caption{Throughput and p95 latency for \texttt{POST /search}.}
 \end{figure}
 
-Dla pustego zapytania natywny serwer OCI był zdecydowanie szybszy. Jest to
-ścieżka o niskim koszcie aplikacyjnym: zwraca deterministycznie pierwsze
-dokumenty, bez kosztownego filtrowania tekstu. Dla zapytania \texttt{space}
-różnice są bardziej złożone. Spin osiągał wyższą przepustowość, ale przy bardzo
-wysokiej współbieżności miał gorszy ogon opóźnień. To sugeruje, że benchmark
-mierzy nie tylko izolację, lecz także interakcję prostego liniowego skanowania
-44\,471 rekordów z modelem HTTP i schedulingiem danego runtime'u.
+For the empty query, the native OCI server was decisively faster. This is a low application-cost
+path: it returns the first documents deterministically without expensive text filtering. For the
+\texttt{space} query, the picture is more nuanced. Spin achieved higher throughput but worse
+latency tails at very high concurrency. This suggests the benchmark measures not only isolation
+but also the interaction of simple linear scanning over 44\,471 records with each runtime's HTTP
+model and scheduling.
 
 \begin{table}[H]
 \centering
-\caption{Pamięć: maksimum zaobserwowanych próbek.}
+\caption{Memory: maximum of observed samples.}
 \begin{tabular}{llrr}
 \toprule
-System & Faza & Źródło & Max [MiB] \\
+System & Phase & Source & Max [MiB] \\
 \midrule
 OCI & idle & \texttt{docker stats} & 29.8 \\
 OCI & load & \texttt{docker stats} & 31.9 \\
@@ -233,81 +218,73 @@ Spin & load & host process RSS & 493.5 \\
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.68\linewidth]{memory_peak.png}
-\caption{Maksimum próbek pamięci dla idle i load.}
+\caption{Peak memory samples for idle and load.}
 \end{figure}
 
-Pamięć jest najmocniejszym argumentem przeciwko prostemu twierdzeniu, że
-wariant WASM zawsze jest lżejszy. W tym projekcie obserwowany proces Spin wraz z
-wasmtime miał większy RSS niż kontener OCI. Jednocześnie nie jest to pełny model
-kosztu produkcyjnego, bo Docker raportuje pamięć z perspektywy kontenera, a Spin
-z perspektywy procesu hosta. W raporcie końcowym oznacza to ostrożny wniosek:
-Spin daje ciekawy model izolacji capability-oriented, ale wymaga świadomego
-pomiaru i nie gwarantuje automatycznie niższego narzutu.
+Memory is the strongest argument against the simple claim that the WASM variant is always
+lighter. In this project, the observed Spin process together with wasmtime had higher RSS than
+the OCI container. At the same time, this is not a full production cost model, because Docker
+reports memory from the container perspective while Spin is measured from the host process
+perspective. The final report therefore draws a cautious conclusion: Spin offers an interesting
+capability-oriented isolation model, but it requires deliberate measurement and does not
+automatically guarantee lower overhead.
 
 \section{Demo}
 
-Demo prezentacyjne nie uruchamia pełnego benchmarku na żywo. Pełne pomiary są
-zebrane wcześniej, a w trakcie prezentacji pokazujemy reprodukowalną ścieżkę:
+The presentation demo does not run the full benchmark live. Measurements are collected
+beforehand; during the presentation we show a reproducible path:
 
 \begin{enumerate}
-  \item uruchomienie Spin na \texttt{127.0.0.1:8080} i OCI na
-  \texttt{127.0.0.1:8081};
-  \item sprawdzenie \texttt{/health}, \texttt{/version} i \texttt{/stats};
-  \item jedno wyszukiwanie \texttt{space};
-  \item uruchomienie \texttt{benchmarks/compare\_results.sh};
-  \item pokazanie finalnych wykresów i plików CSV.
+  \item start Spin on \texttt{127.0.0.1:8080} and OCI on \texttt{127.0.0.1:8081};
+  \item check \texttt{/health}, \texttt{/version}, and \texttt{/stats};
+  \item run one \texttt{space} search;
+  \item run \texttt{benchmarks/compare\_results.sh};
+  \item show the final charts and CSV files.
 \end{enumerate}
 
-Jeżeli środowisko live zawiedzie, plan awaryjny polega na pokazaniu zapisanych
-artefaktów: \path{results/raw}, \path{results/processed} i
-\path{results/plots}. Pełny scenariusz znajduje się w
-\path{demo/demo-script.md}.
+If the live environment fails, the fallback plan is to show saved artifacts:
+\path{results/raw}, \path{results/processed}, and \path{results/plots}. The full scenario is
+in \path{demo/demo-script.md}.
 
-\section{Reprodukowalność i ograniczenia}
+\section{Reproducibility and limitations}
 
-Repozytorium zostało przygotowane tak, aby wynik dało się odtworzyć jednym
-przebiegiem:
+The repository is set up so results can be reproduced in a single run:
 
 \begin{verbatim}
 benchmarks/run_all.sh
 \end{verbatim}
 
-Skrypt buduje oba warianty, uruchamia testy poprawności, wykonuje smoke/parity
-checks, zbiera trzy rodzaje surowych CSV i generuje pliki przetworzone:
+The script builds both variants, runs correctness tests, performs smoke/parity checks, collects
+three kinds of raw CSV data, and generates processed files:
 \path{results/processed/cold_start_summary.csv},
-\path{results/processed/load_summary.csv} oraz
-\path{results/processed/memory_summary.csv}. Wykresy w raporcie pochodzą z
-\path{results/plots}. Surowe dane finalnego przebiegu zachowano w
-\path{results/raw}; wcześniejsze dane pilota nie są mieszane z wynikami
-końcowymi.
+\path{results/processed/load_summary.csv}, and
+\path{results/processed/memory_summary.csv}. Charts in this report come from
+\path{results/plots}. Raw data from the final run are kept in \path{results/raw}; earlier pilot
+data are not mixed with the final results.
 
-Najważniejsze ograniczenia interpretacyjne są trzy. Po pierwsze, aplikacja
-nie używa indeksu odwrotnego: wyszukiwanie \texttt{space} jest świadomie prostym
-skanowaniem tekstowym, więc nie porównuje jakości produkcyjnych wyszukiwarek.
-Po drugie, pomiar cold start zależy od lokalnego hosta, cache systemowego i
-tego, że obraz OCI jest zbudowany wcześniej. Po trzecie, pamięć Spin i OCI jest
-mierzona z różnych perspektyw narzędziowych. Wnioski należy więc traktować jako
-wynik kontrolowanego eksperymentu lokalnego, a nie uniwersalną charakterystykę
-wszystkich workloadów WASM i kontenerowych.
+There are three main interpretive limitations. First, the application does not use an inverted
+index: \texttt{space} search is intentionally simple text scanning, so it does not compare
+production search-engine quality. Second, cold-start measurement depends on the local host,
+system cache, and the fact that the OCI image was built beforehand. Third, Spin and OCI memory
+are measured from different tooling perspectives. Conclusions should therefore be treated as
+the outcome of a controlled local experiment, not a universal characterization of all WASM and
+container workloads.
 
-\section{Wnioski}
+\section{Conclusions}
 
-Najważniejszy rezultat projektu jest metodologiczny: porównanie jest uczciwe,
-ponieważ oba runtime'y wykonują ten sam kod aplikacyjny i zwracają identyczne
-wyniki. Spin/WASM dobrze pasuje do małych, izolowanych komponentów HTTP,
-pluginów, funkcji edge i workloadów serverless, w których istotne są
-przenośność, sandboxing i prosty model capability-oriented. Kontenery OCI
-pozostają dojrzalsze operacyjnie: mają powszechne narzędzia, stabilną
-rachunkowość zasobów, znany model wdrożeń i bardzo dobrą wydajność dla prostych
-ścieżek natywnych.
+The most important project outcome is methodological: the comparison is fair because both
+runtimes execute the same application code and return identical results. Spin/WASM fits small,
+isolated HTTP components, plugins, edge functions, and serverless workloads where portability,
+sandboxing, and a simple capability-oriented model matter. OCI containers remain more mature
+operationally: they have widespread tooling, stable resource accounting, a familiar deployment
+model, and very good performance for simple native paths.
 
-W naszym benchmarku OCI miało szybszą gotowość \texttt{/health}, Spin miał
-szybszy pierwszy request wyszukiwania po starcie, a wyniki load zależały mocno
-od zapytania. Puste zapytanie zdecydowanie premiowało OCI, natomiast zapytanie
-\texttt{space} pokazało wyższą przepustowość Spin przy gorszych ogonach
-opóźnień przy dużej współbieżności. Próba Meilisearch pozostaje wartościowym
-appendixem: storage-heavy system oparty o LMDB i mmap nie jest dobrym
-kandydatem do prostego portu WASI bez istotnych zmian architektury.
+In our benchmark, OCI had faster \texttt{/health} readiness, Spin had a faster first search
+request after startup, and load results depended strongly on the query. The empty query clearly
+favored OCI, while the \texttt{space} query showed higher Spin throughput with worse latency tails
+at high concurrency. The Meilisearch attempt remains a valuable appendix: a storage-heavy system
+built on LMDB and mmap is not a good candidate for a simple WASI port without substantial
+architectural changes.
 
 \begin{thebibliography}{9}
 \bibitem{webassembly}

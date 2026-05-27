@@ -1,58 +1,56 @@
-# Raport Końcowy: Movie Search na Spin/WASM vs OCI
+# Final Report: Movie Search on Spin/WASM vs OCI
 
-Właściwym raportem końcowym jest wersja LaTeX:
+The authoritative final report is the LaTeX version:
 
-- źródło: `report/final-report.tex`;
-- PDF do oddania: `report/final-report.pdf`.
+- source: `report/final-report.tex`;
+- PDF for submission: `report/final-report.pdf`.
 
-Ten plik Markdown pełni rolę krótkiego indeksu i streszczenia pakietu.
+This Markdown file is a short index and summary of the package.
 
-## Zakres
+## Scope
 
-Projekt porównuje ten sam mikroserwis HTTP `movie-search` w dwóch modelach
-izolacji:
+The project compares the same HTTP microservice `movie-search` under two isolation models:
 
-- Spin/wasmtime jako komponent WASI HTTP;
-- natywny serwer Rust uruchamiany w kontenerze OCI.
+- Spin/wasmtime as a WASI HTTP component;
+- a native Rust server running in an OCI container.
 
-Porzucono próbę bezpośredniego porównania z Meilisearch, ponieważ oficjalny
-Meilisearch opiera się na LMDB, memory-mapped storage i natywnych założeniach
-runtime, których nie dało się przenieść 1:1 do Spin/WASI w ramach projektu.
+We abandoned a direct comparison with Meilisearch because official Meilisearch relies on LMDB,
+memory-mapped storage, and native runtime assumptions that could not be ported 1:1 to Spin/WASI
+within the project.
 
-## Finalne Artefakty
+## Final artifacts
 
-- Raport: `report/final-report.pdf`.
-- Prezentacja edytowalna: `presentation/movie-search-spin-vs-oci.pptx`.
-- Prezentacja PDF: `presentation/movie-search-spin-vs-oci.pdf`.
+- Report: `report/final-report.pdf`.
+- Editable presentation: `presentation/movie-search-spin-vs-oci.pptx`.
+- Presentation PDF: `presentation/movie-search-spin-vs-oci.pdf`.
 - Demo: `demo/demo-script.md`.
-- Wyniki surowe: `results/raw/`.
-- Wyniki przetworzone: `results/processed/`.
-- Wykresy: `results/plots/`.
+- Raw results: `results/raw/`.
+- Processed results: `results/processed/`.
+- Charts: `results/plots/`.
 
-## Najważniejsze Wyniki
+## Key results
 
-- Parytet funkcjonalny: Spin i OCI zwracają te same `hit.id` dla zapytań
-  `space`, `toy story`, `dark knight`, `romance` i pustego zapytania.
+- Functional parity: Spin and OCI return the same `hit.id` for queries `space`, `toy story`,
+  `dark knight`, `romance`, and the empty query.
 - Cold start `/health` p95: OCI `28.420 ms`, Spin `144.220 ms`.
-- Cold start + pierwszy `/search` p95: OCI `376.983 ms`, Spin `217.504 ms`.
+- Cold start + first `/search` p95: OCI `376.983 ms`, Spin `217.504 ms`.
 - Empty query, concurrency 10: OCI `3314.9 req/s`, Spin `132.8 req/s`.
 - Query `space`, concurrency 10: OCI `54.0 req/s`, Spin `77.2 req/s`.
-- Memory load max: OCI `31.9 MiB` przez `docker stats`, Spin `493.5 MiB`
-  jako host process RSS.
+- Memory load max: OCI `31.9 MiB` via `docker stats`, Spin `493.5 MiB` as host process RSS.
 
-## Reprodukcja
+## Reproduction
 
-Pełny benchmark:
+Full benchmark:
 
 ```bash
 benchmarks/run_all.sh
 ```
 
-Kompilacja raportu:
+Build the report:
 
 ```bash
 latexmk -pdf -outdir=report -interaction=nonstopmode -halt-on-error report/final-report.tex
 ```
 
-Demo prezentacyjne opisuje `demo/demo-script.md`. Demo nie uruchamia pełnego
-benchmarku na żywo; pokazuje parytet funkcjonalny i finalne artefakty wyników.
+The presentation demo is described in `demo/demo-script.md`. The demo does not run the full
+benchmark live; it shows functional parity and the final result artifacts.
