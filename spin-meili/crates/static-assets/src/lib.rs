@@ -20,6 +20,9 @@ pub fn lookup(segments: &[&str]) -> Option<StaticFile> {
         ["benchmark-data", rest @ ..] if !rest.is_empty() => {
             return lookup_path(&format!("benchmark-data/{}", join_segments(rest)));
         }
+        ["posters", rest @ ..] if !rest.is_empty() => {
+            return lookup_path(&format!("posters/{}", join_segments(rest)));
+        }
         _ => return None,
     };
 
@@ -47,6 +50,8 @@ fn content_type_for_path(path: &str) -> &'static str {
         "text/css; charset=utf-8"
     } else if path.ends_with(".svg") {
         "image/svg+xml"
+    } else if path.ends_with(".jpg") || path.ends_with(".jpeg") {
+        "image/jpeg"
     } else if path.ends_with(".png") {
         "image/png"
     } else if path.ends_with(".ico") {

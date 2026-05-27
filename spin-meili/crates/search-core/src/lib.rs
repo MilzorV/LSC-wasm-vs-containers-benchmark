@@ -13,6 +13,8 @@ pub struct Movie {
     pub overview: String,
     pub genre: String,
     pub year: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub poster_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -313,6 +315,7 @@ mod tests {
             overview: overview.to_string(),
             genre: genre.to_string(),
             year: Some(2026),
+            poster_path: None,
         }
     }
 }

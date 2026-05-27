@@ -1,5 +1,5 @@
 import { createApiClient } from "../api.js";
-import { bindMovieCards, formatRange, renderMovieList } from "../ui.js";
+import { bindMovieCards, formatRange, loadCachedPosterIds, renderMovieList } from "../ui.js";
 
 const body = document.body;
 const API_BASE = body.dataset.apiBase ?? "";
@@ -120,4 +120,4 @@ browseNext.addEventListener("click", () => {
   loadBrowse(browseState.offset + browseState.pageSize);
 });
 
-loadStatus();
+loadCachedPosterIds().then(loadStatus);

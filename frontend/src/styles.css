@@ -164,6 +164,7 @@ body {
   display: grid;
   grid-template-columns: 56px 1fr;
   gap: 1rem;
+  align-items: start;
   padding: 1rem;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -177,17 +178,64 @@ body {
   outline-offset: 2px;
 }
 
-.poster {
+.poster-wrap {
+  position: relative;
   width: 56px;
   height: 84px;
+  flex-shrink: 0;
+  overflow: hidden;
   border-radius: 8px;
   background: linear-gradient(145deg, #2a3344, #1a2030);
+}
+
+.poster-wrap--large {
+  width: 140px;
+  height: 210px;
+}
+
+.poster-wrap > .poster,
+.poster-wrap > .poster-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border-radius: 0;
+}
+
+.poster-wrap > .poster {
+  object-fit: cover;
+  display: block;
+}
+
+.poster-wrap > .poster-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--muted);
+}
+
+.poster-wrap > [hidden] {
+  display: none !important;
+}
+
+.poster-fallback {
+  width: 56px;
+  height: 84px;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #2a3344, #1a2030);
+}
+
+.movie-detail {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.movie-detail-body {
+  min-width: 0;
 }
 
 .movie-body h3 {
@@ -246,7 +294,7 @@ body {
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
-  max-width: 560px;
+  max-width: 640px;
   width: calc(100% - 2rem);
   padding: 1.25rem;
 }

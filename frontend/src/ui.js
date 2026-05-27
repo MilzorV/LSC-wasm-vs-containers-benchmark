@@ -6,6 +6,57 @@ export function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+const TMDB_POSTER_BASE = "https://image.tmdb.org/t/p/w342";
+
+/** Movie ids with a file under /posters/{id}.jpg (see fixtures/download_posters.py). */
+let cachedPosterIds = null;
+
+export async function loadCachedPosterIds() {
+  if (cachedPosterIds !== null) {
+    return cachedPosterIds;
+  }
+  try {
+    const response = await fetch("/posters/manifest.json");
+    cachedPosterIds = response.ok ? new Set(await response.json()) : new Set();
+  } catch {
+    cachedPosterIds = new Set();
+  }
+  return cachedPosterIds;
+}
+
+export function posterUrl(movie, size = "w342") {
+  const path = movie?.poster_path;
+  if (!path) {
+    return null;
+  }
+  const base =
+    size === "w342" ? TMDB_POSTER_BASE : `https://image.tmdb.org/t/p/${size}`;
+  return `${base}${path}`;
+}
+
+function localPosterUrl(movieId) {
+  return `/posters/${movieId}.jpg`;
+}
+
+function posterSrc(movie, large = false) {
+  if (cachedPosterIds?.has(movie.id)) {
+    return localPosterUrl(movie.id);
+  }
+  return posterUrl(movie, large ? "w500" : "w342");
+}
+
+function posterMarkup(movie, { large = false } = {}) {
+  const cdnUrl = posterUrl(movie, large ? "w500" : "w342");
+  const src = posterSrc(movie, large);
+  const wrapClass = large ? "poster-wrap poster-wrap--large" : "poster-wrap";
+  if (!src) {
+    return `<div class="${wrapClass}"><div class="poster-fallback" aria-hidden="true">MS</div></div>`;
+  }
+  const alt = escapeHtml(movie.title);
+  const cdnAttr = cdnUrl && cdnUrl !== src ? ` data-cdn="${escapeHtml(cdnUrl)}"` : "";
+  return `<div class="${wrapClass}"><img class="poster" src="${escapeHtml(src)}"${cdnAttr} alt="${alt} poster" loading="lazy" decoding="async" onerror="if(this.dataset.cdn&&!this.dataset.triedCdn){this.dataset.triedCdn=1;this.src=this.dataset.cdn;return}this.hidden=true;this.nextElementSibling.hidden=false;this.nextElementSibling.removeAttribute('aria-hidden')" /><div class="poster-fallback" hidden aria-hidden="true">MS</div></div>`;
+}
+
 export function movieCard(movie) {
   const year = movie.year ? ` · ${movie.year}` : "";
   const overview = movie.overview
@@ -14,7 +65,7 @@ export function movieCard(movie) {
   const encoded = encodeURIComponent(JSON.stringify(movie));
   return `
     <article class="movie-card" data-movie="${encoded}" tabindex="0">
-      <div class="poster" aria-hidden="true">MS</div>
+      ${posterMarkup(movie)}
       <div class="movie-body">
         <h3>${escapeHtml(movie.title)}</h3>
         <p class="movie-meta">${escapeHtml(movie.genre)}${year} · #${movie.id}</p>
@@ -43,13 +94,18 @@ export function formatRange(offset, count, total) {
 export function openMovieDetail(dialog, detailRoot, movie) {
   const year = movie.year ? `<li>Year: ${escapeHtml(movie.year)}</li>` : "";
   detailRoot.innerHTML = `
-    <h2>${escapeHtml(movie.title)}</h2>
-    <ul class="detail-meta">
-      <li>ID: ${movie.id}</li>
-      <li>Genre: ${escapeHtml(movie.genre)}</li>
-      ${year}
-    </ul>
-    <p>${escapeHtml(movie.overview || "No overview available.")}</p>
+    <div class="movie-detail">
+      ${posterMarkup(movie, { large: true })}
+      <div class="movie-detail-body">
+        <h2>${escapeHtml(movie.title)}</h2>
+        <ul class="detail-meta">
+          <li>ID: ${movie.id}</li>
+          <li>Genre: ${escapeHtml(movie.genre)}</li>
+          ${year}
+        </ul>
+        <p>${escapeHtml(movie.overview || "No overview available.")}</p>
+      </div>
+    </div>
   `;
   dialog.showModal();
 }

@@ -17,3 +17,4 @@ docs/upstream-native-check.log
 docs/upstream-wasi-check.log
 docs/upstream-wasi-check-*.log
 results/raw/*.log
+frontend/public/posters/*.jpg
