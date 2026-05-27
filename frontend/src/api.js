@@ -20,8 +20,8 @@ export function createApiClient(baseUrl = "") {
     getHealth: () => fetchJson(baseUrl, "/health"),
     getVersion: () => fetchJson(baseUrl, "/version"),
     getStats: () => fetchJson(baseUrl, "/stats"),
-    searchMovies: (query, offset = 0) => {
-      const body = { q: query };
+    searchMovies: (query, offset = 0, options = {}) => {
+      const body = { q: query, ...options };
       if (offset > 0) {
         body.offset = offset;
       }
@@ -31,6 +31,12 @@ export function createApiClient(baseUrl = "") {
         body: JSON.stringify(body),
       });
     },
+    suggestMovies: (query, options = {}) =>
+      fetchJson(baseUrl, "/suggest", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ q: query, ...options }),
+      }),
     listMovies: (offset = 0) => {
       const params = new URLSearchParams();
       if (offset > 0) {
@@ -54,21 +60,21 @@ export async function getStats(baseUrl = "") {
   return createApiClient(baseUrl).getStats();
 }
 
-export async function searchMovies(query, offset = 0, baseUrl = "") {
-  return createApiClient(baseUrl).searchMovies(query, offset);
+export async function searchMovies(query, offset = 0, baseUrl = "", options = {}) {
+  return createApiClient(baseUrl).searchMovies(query, offset, options);
 }
 
 export async function listMovies(offset = 0, baseUrl = "") {
   return createApiClient(baseUrl).listMovies(offset);
 }
 
-export async function remoteSearch(baseUrl, query) {
+export async function remoteSearch(baseUrl, query, options = {}) {
   const url = resolveBase(baseUrl);
   const started = performance.now();
   const response = await fetch(`${url}/search`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ q: query }),
+    body: JSON.stringify({ q: query, ...options }),
   });
   const elapsed = Math.round(performance.now() - started);
   if (!response.ok) {

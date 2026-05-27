@@ -52,7 +52,7 @@ trap cleanup EXIT
 echo "== Benchmarks =="
 if [[ "$PILOT" == "1" ]]; then
   python3 "$ROOT_DIR/benchmarks/run_cold_start.py" --iterations 2 --include-first-search --build-spin --build-oci
-  python3 "$ROOT_DIR/benchmarks/run_load.py" --duration 3 --concurrency 2 --queries space,empty --repeats 1 --build-spin --build-oci
+  python3 "$ROOT_DIR/benchmarks/run_load.py" --duration 3 --concurrency 2 --queries space,empty,enhanced --repeats 1 --build-spin --build-oci
   python3 "$ROOT_DIR/benchmarks/run_memory.py" --idle-seconds 2 --load-seconds 3 --load-concurrency 2 --build-spin --build-oci
 else
   python3 "$ROOT_DIR/benchmarks/run_cold_start.py" --include-first-search --build-spin --build-oci

@@ -18,6 +18,12 @@ movie-search workloads here, that overhead is small relative to server work for
 `q=space`, but it can dominate empty-query scenarios where the server returns
 quickly.
 
+The default scenario set is now `space,empty,enhanced`. The `enhanced` label
+uses an opt-in Meilisearch-inspired payload with filters, facets, highlighting,
+typo tolerance, and debug ranking. This keeps the historical `space` and empty
+queries intact while adding a realistic feature-heavy path for demos and
+analysis.
+
 ## Validation built into the Python harness
 
 During load and cold-start runs, successful responses are validated against:
@@ -25,6 +31,8 @@ During load and cold-start runs, successful responses are validated against:
 - HTTP 200 status;
 - response schema;
 - known `hit.id` ordering for `q=space` and empty `q`.
+- presence of enhanced response fields when the `enhanced` scenario requests
+  facets and highlighting.
 
 This catches silent correctness regressions that a raw throughput tool would miss.
 

@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use movie_search_core::{MovieSearch, SearchRequest, DEFAULT_LIMIT};
+use movie_search_core::{MovieSearch, SearchRequest, SuggestRequest, DEFAULT_LIMIT};
 use serde::Serialize;
 use spin_sdk::http::{IntoResponse, Method, Request, Response};
 use spin_sdk::http_component;
@@ -39,16 +39,22 @@ fn route(req: Request) -> Response {
             Ok(json(200, &engine().movies(offset, limit)))
         }
         ("POST", ["search"]) => handle_search(&req),
+        ("POST", ["suggest"]) => handle_suggest(&req),
         ("GET", segs) => lookup(segs)
             .map(|file| static_file(file.contents, file.content_type))
-            .ok_or_else(|| ApiError::new(404, "not_found", format!("route '{path}' was not found"))),
-        (_, ["health"]) | (_, ["version"]) | (_, ["stats"]) | (_, ["movies"]) | (_, ["search"]) => {
-            Err(ApiError::new(
-                405,
-                "method_not_allowed",
-                format!("{method} is not allowed for {path}"),
-            ))
-        }
+            .ok_or_else(|| {
+                ApiError::new(404, "not_found", format!("route '{path}' was not found"))
+            }),
+        (_, ["health"])
+        | (_, ["version"])
+        | (_, ["stats"])
+        | (_, ["movies"])
+        | (_, ["search"])
+        | (_, ["suggest"]) => Err(ApiError::new(
+            405,
+            "method_not_allowed",
+            format!("{method} is not allowed for {path}"),
+        )),
         _ => Err(ApiError::new(
             404,
             "not_found",
@@ -62,7 +68,7 @@ fn route(req: Request) -> Response {
 fn is_api_path(segments: &[&str]) -> bool {
     matches!(
         segments,
-        ["health"] | ["version"] | ["stats"] | ["movies"] | ["search"]
+        ["health"] | ["version"] | ["stats"] | ["movies"] | ["search"] | ["suggest"]
     )
 }
 
@@ -75,6 +81,11 @@ fn engine() -> &'static MovieSearch {
 fn handle_search(req: &Request) -> Result<Response, ApiError> {
     let request = parse_body::<SearchRequest>(req)?;
     Ok(json(200, &engine().search(request)))
+}
+
+fn handle_suggest(req: &Request) -> Result<Response, ApiError> {
+    let request = parse_body::<SuggestRequest>(req)?;
+    Ok(json(200, &engine().suggest(request)))
 }
 
 fn query_usize(query: &str, name: &str) -> Option<usize> {

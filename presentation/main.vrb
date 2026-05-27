@@ -12,6 +12,7 @@ docker compose up --build
 
 benchmarks/compare_results.sh
       \end{lstlisting}
+      \textbf{UI path:} search \texttt{space}, then enable enhanced mode and search \texttt{spce}.
     \end{column}
     \begin{column}{0.43\linewidth}
       \textbf{File-tools}

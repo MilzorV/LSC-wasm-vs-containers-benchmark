@@ -19,6 +19,7 @@ from benchmark_lib import (
     parse_csv_arg,
     parse_int_csv_arg,
     post_search,
+    search_scenario_payload,
     start_service,
     stop_service,
     timestamp_slug,
@@ -29,7 +30,7 @@ from benchmark_lib import (
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--systems", default="spin,oci")
-    parser.add_argument("--queries", default="space,empty")
+    parser.add_argument("--queries", default="space,empty,enhanced")
     parser.add_argument("--concurrency", default="10,50,100,200")
     parser.add_argument("--duration", type=float, default=30.0)
     parser.add_argument("--timeout", type=float, default=30.0)
@@ -42,7 +43,7 @@ def main() -> int:
 
     ensure_result_dirs()
     systems = parse_csv_arg(args.systems)
-    queries = [normalize_query(query) for query in parse_csv_arg(args.queries)]
+    scenarios = [normalize_query(query) for query in parse_csv_arg(args.queries)]
     concurrencies = parse_int_csv_arg(args.concurrency)
     run_id = timestamp_slug()
     output = args.output or RESULTS_RAW / f"load_{run_id}.csv"
@@ -80,7 +81,7 @@ def main() -> int:
                     wait_for_health(service.url, args.timeout)
                     post_search(service.url, "space", limit=args.limit, timeout=args.timeout)
 
-                    for query in queries:
+                    for scenario in scenarios:
                         for concurrency in concurrencies:
                             run_scenario(
                                 writer=writer,
@@ -90,7 +91,7 @@ def main() -> int:
                                 repeat=repeat,
                                 system=system,
                                 url=service.url,
-                                query=query,
+                                scenario=scenario,
                                 concurrency=concurrency,
                                 duration=args.duration,
                                 timeout=args.timeout,
@@ -107,7 +108,7 @@ def main() -> int:
         "duration_seconds": args.duration,
         "repeats": args.repeats,
         "systems": systems,
-        "queries": queries,
+        "queries": scenarios,
         "concurrency": concurrencies,
         "limit": args.limit,
     }
@@ -125,12 +126,13 @@ def run_scenario(
     repeat: int,
     system: str,
     url: str,
-    query: str,
+    scenario: str,
     concurrency: int,
     duration: float,
     timeout: float,
     limit: int,
 ) -> None:
+    query, payload = search_scenario_payload(scenario, limit)
     deadline = time.perf_counter() + duration
     started = time.perf_counter()
     successes = 0
@@ -141,12 +143,18 @@ def run_scenario(
         nonlocal successes, errors
         while time.perf_counter() < deadline:
             request_id = next(request_ids)
-            success, status, latency_ms, error = post_search(url, query, limit=limit, timeout=timeout)
+            success, status, latency_ms, error = post_search(
+                url,
+                query,
+                limit=limit,
+                timeout=timeout,
+                payload=payload,
+            )
             row = {
                 "run_id": run_id,
                 "repeat": repeat,
                 "system": system,
-                "query": query,
+                "query": scenario,
                 "concurrency": concurrency,
                 "request_id": request_id,
                 "success": str(success).lower(),
@@ -169,7 +177,7 @@ def run_scenario(
 
     elapsed = max(time.perf_counter() - started, 0.001)
     rate = successes / elapsed
-    label = query if query else "<empty>"
+    label = scenario if scenario else "<empty>"
     print(
         f"[load] run={run_id} repeat={repeat} system={system} query={label} "
         f"concurrency={concurrency} successes={successes} errors={errors} rate={rate:.2f}/s"

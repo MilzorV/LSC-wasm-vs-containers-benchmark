@@ -17,8 +17,8 @@ from benchmark_lib import (
     find_hey,
     normalize_query,
     parse_csv_arg,
-    parse_int_csv_arg,
     post_search,
+    search_scenario_payload,
     start_service,
     stop_service,
     timestamp_slug,
@@ -47,7 +47,7 @@ def main() -> int:
 
     ensure_result_dirs()
     systems = parse_csv_arg(args.systems)
-    query = normalize_query(args.query)
+    scenario = normalize_query(args.query)
     run_id = timestamp_slug()
     output = args.output or RESULTS_RAW / f"load_hey_{run_id}.csv"
     meta_output = output.with_suffix(".json")
@@ -68,7 +68,7 @@ def main() -> int:
                     hey=hey,
                     system=system,
                     url=service.url,
-                    query=query,
+                    scenario=scenario,
                     concurrency=args.concurrency,
                     duration=args.duration,
                     limit=args.limit,
@@ -105,7 +105,7 @@ def main() -> int:
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "duration_seconds": args.duration,
         "systems": systems,
-        "query": query,
+        "query": scenario,
         "concurrency": args.concurrency,
         "limit": args.limit,
     }
@@ -119,13 +119,14 @@ def run_hey(
     hey: str,
     system: str,
     url: str,
-    query: str,
+    scenario: str,
     concurrency: int,
     duration: float,
     limit: int,
     run_id: str,
 ) -> dict[str, object]:
-    payload = json.dumps({"q": query, "limit": limit})
+    query, request_payload = search_scenario_payload(scenario, limit)
+    payload = json.dumps(request_payload)
     command = [
         hey,
         "-z",
@@ -151,7 +152,7 @@ def run_hey(
         raise RuntimeError(f"hey failed for {system}: {result.stdout}")
 
     parsed = parse_hey_output(result.stdout)
-    label = query if query else "<empty>"
+    label = scenario if scenario else "<empty>"
     print(
         f"[load-hey] run={run_id} system={system} query={label} "
         f"rate={parsed['request_rate']} req/s p95={parsed['latency_p95_ms']} ms"
@@ -160,7 +161,7 @@ def run_hey(
         "run_id": run_id,
         "tool": "hey",
         "system": system,
-        "query": query,
+        "query": scenario,
         "concurrency": concurrency,
         "duration_seconds": duration,
         **parsed,

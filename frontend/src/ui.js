@@ -59,16 +59,20 @@ function posterMarkup(movie, { large = false } = {}) {
 
 export function movieCard(movie) {
   const year = movie.year ? ` · ${movie.year}` : "";
+  const formatted = movie._formatted || {};
+  const title = formatted.title || escapeHtml(movie.title);
+  const genre = formatted.genre || escapeHtml(movie.genre);
+  const overviewValue = formatted.overview || escapeHtml(movie.overview);
   const overview = movie.overview
-    ? `<p class="movie-overview">${escapeHtml(movie.overview)}</p>`
+    ? `<p class="movie-overview">${overviewValue}</p>`
     : "";
   const encoded = encodeURIComponent(JSON.stringify(movie));
   return `
     <article class="movie-card" data-movie="${encoded}" tabindex="0">
       ${posterMarkup(movie)}
       <div class="movie-body">
-        <h3>${escapeHtml(movie.title)}</h3>
-        <p class="movie-meta">${escapeHtml(movie.genre)}${year} · #${movie.id}</p>
+        <h3>${title}</h3>
+        <p class="movie-meta">${genre}${year} · #${movie.id}</p>
         ${overview}
       </div>
     </article>`;

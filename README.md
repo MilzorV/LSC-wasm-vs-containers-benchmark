@@ -67,6 +67,7 @@ The Spin service exposes:
 - `GET /stats`
 - `GET /movies?offset=&limit=`
 - `POST /search`
+- `POST /suggest`
 
 Example search:
 
@@ -75,6 +76,15 @@ curl -fsS \
   -X POST http://127.0.0.1:8080/search \
   -H 'content-type: application/json' \
   --data '{"q":"space","limit":3}'
+```
+
+Enhanced search options are available on both runtimes while the default payload remains backward compatible:
+
+```bash
+curl -fsS \
+  -X POST http://127.0.0.1:8080/search \
+  -H 'content-type: application/json' \
+  --data '{"q":"spce","limit":3,"filter":{"genre":["Science Fiction"],"year":{"gte":1970}},"facets":["genre","year"],"highlight":["title"],"typoTolerance":true}'
 ```
 
 ## Run the OCI Service
@@ -114,6 +124,7 @@ The comparison script validates that Spin and OCI return the same engine name, s
 - `dark knight`
 - `romance`
 - empty query
+- one enhanced Meilisearch-inspired search payload plus `/suggest`
 
 ## Web app
 
@@ -139,6 +150,7 @@ http://127.0.0.1:8080/
 ```
 
 - **Search both** — same query against Spin and OCI; parity badge when rankings match
+- **Enhanced demo mode** — compares filters, facets, highlighting, typo tolerance, and suggestions
 - **`/demo`** — same page (legacy link)
 
 Benchmark dashboard (embedded summaries from last `make analyze`):
@@ -183,7 +195,7 @@ benchmarks/run_all.sh
 make benchmark
 ```
 
-The full run builds both runtimes, runs smoke/parity checks, collects cold-start, load, and memory samples, then generates processed summaries and plots. Load runs repeat three times by default; analysis uses only the latest raw run id unless `--all-runs` is passed to `analyze_results.py`.
+The full run builds both runtimes, runs smoke/parity checks, collects cold-start, load, and memory samples, then generates processed summaries and plots. Load runs repeat three times by default and include `space`, empty, and `enhanced` search scenarios. Analysis uses only the latest raw run id unless `--all-runs` is passed to `analyze_results.py`.
 
 Outputs:
 

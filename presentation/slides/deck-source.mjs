@@ -16,115 +16,115 @@ const C = {
 
 const slides = [
   {
-    section: "Projekt LSC",
-    title: "Movie Search na Spin/WASM vs OCI",
-    subtitle: "Porównanie WebAssembly jako izolacji dla mikroserwisów HTTP",
+    section: "LSC Project",
+    title: "Movie Search on Spin/WASM vs OCI",
+    subtitle: "Comparing WebAssembly as isolation for HTTP microservices",
     type: "title",
     notes:
-      "Otwieramy jasnym celem: to nie jest benchmark Meilisearch, tylko porównanie tego samego mikroserwisu Rust w dwóch modelach izolacji.",
+      "Open with the core point: this is not a direct Meilisearch benchmark, but a comparison of the same Rust microservice in two isolation models.",
   },
   {
-    section: "Pytanie badawcze",
-    title: "Czy ten sam mikroserwis działa praktycznie w Spin/WASI i OCI?",
-    claim: "Najpierw dowodzimy zgodności funkcjonalnej, dopiero potem porównujemy cold start, load i pamięć.",
+    section: "Research Question",
+    title: "Can the same microservice run practically on Spin/WASI and OCI?",
+    claim: "We prove functional parity first, then compare cold start, load, and memory.",
     bullets: [
-      "Ten sam kod aplikacyjny: movie-search-core",
-      "Ten sam dataset: 44 471 filmów po deduplikacji id",
-      "Te same endpointy HTTP i te same zapytania benchmarkowe",
-      "Porównanie runtime/isolation, nie dwóch różnych wyszukiwarek",
+      "Same application code: movie-search-core",
+      "Same dataset: 44,471 movies after id deduplication",
+      "Same HTTP endpoints and benchmark payloads",
+      "Runtime/isolation comparison, not two different search engines",
     ],
     notes:
-      "Tu ustawiamy metodologię: interesuje nas różnica izolacji i uruchomienia, więc eliminujemy różnicę logiki aplikacji.",
+      "Set up the methodology: we care about isolation and startup differences, so we remove differences in application logic.",
   },
   {
     section: "Stack",
-    title: "Do czego służy Spin/WASM/WASI/wasmtime?",
+    title: "What are Spin, WASM, WASI, and wasmtime for?",
     type: "stack",
     notes:
-      "Spin to framework dla aplikacji i mikroserwisów WebAssembly. WASI daje kontrolowane interfejsy systemowe, a wasmtime wykonuje komponenty poza przeglądarką.",
+      "Spin is a framework for WebAssembly apps and microservices. WASI provides controlled system interfaces, and wasmtime executes components outside the browser.",
   },
   {
     section: "Pivot",
-    title: "Dlaczego odeszliśmy od pełnego Meilisearch?",
-    claim: "Meilisearch był dobrym case study feasibility, ale złym benchmarkiem 1:1 dla Spin.",
+    title: "Why did we move away from full Meilisearch?",
+    claim: "Meilisearch was useful feasibility evidence, but not a fair 1:1 Spin benchmark.",
     bullets: [
-      "Oficjalny Meilisearch opiera storage o LMDB i memory-mapped files",
-      "Spin fallback miał inną semantykę rankingu i inny model danych",
-      "Upstream WASI build zatrzymał się na zależnościach runtime/storage",
-      "Wniosek: uczciwiej mierzyć własny wspólny serwis niż udawać parytet",
+      "Official Meilisearch stores data in LMDB and memory-mapped files",
+      "A Spin fallback had different ranking semantics and a different data model",
+      "The upstream WASI build stopped on runtime/storage dependencies",
+      "Conclusion: measure a shared service instead of pretending parity",
     ],
     notes:
-      "Ten slajd uzasadnia decyzję projektową. Nie chowamy porażki portu: pokazujemy ją jako powód poprawienia metody.",
+      "Explain the pivot honestly: the failed direct port became evidence that the benchmark method needed to change.",
   },
   {
-    section: "Aplikacja",
-    title: "Co robi movie-search?",
+    section: "Application",
+    title: "What does movie-search do?",
     type: "application",
     notes:
-      "Aplikacja jest prosta celowo. Dzięki temu wyniki wynikają z runtime'u i adapterów, a nie z ukrytej złożoności silnika wyszukiwarki.",
+      "The app is compact by design, but now includes opt-in Meilisearch-like features in the shared core for a stronger demo.",
   },
   {
     section: "Architektura",
-    title: "Jeden core, dwa adaptery runtime",
+    title: "One core, two runtime adapters",
     type: "architecture",
     notes:
-      "To najważniejszy slajd techniczny: shared core jest środkiem ciężkości, a Spin i OCI to adaptery wokół tej samej logiki.",
+      "This is the key technical slide: the shared core is the center, with Spin and OCI as adapters around the same logic.",
   },
   {
-    section: "Metodyka",
-    title: "Jak mierzyliśmy?",
+    section: "Methodology",
+    title: "How did we measure?",
     type: "methodology",
     notes:
-      "Pokazujemy pełny pipeline: testy, build, parity, cold start, load, memory, analiza. Full benchmark nie jest częścią demo live.",
+      "Show the full pipeline: tests, build, parity, cold start, load, memory, analysis. The full benchmark is not part of the live demo.",
   },
   {
-    section: "Parytet",
-    title: "Oba runtime'y zwracają te same wyniki",
+    section: "Parity",
+    title: "Both runtimes return the same results",
     type: "parity",
     notes:
-      "To jest warunek wiarygodności. Parytet obejmuje engine, documentCount, estimatedTotalHits i listy hit.id.",
+      "This is the credibility gate. Parity covers engine, documentCount, estimatedTotalHits, hit.id lists, enhanced payloads, and suggestions.",
   },
   {
     section: "Cold start",
-    title: "Cold start: OCI szybciej gotowe, Spin szybciej kończy pierwszy search",
+    title: "Cold start: OCI is ready sooner, Spin completes first search sooner",
     type: "cold",
     notes:
-      "Wyjaśniamy różnicę między gotowością /health i pierwszym realnym requestem /search. To dwie różne metryki.",
+      "Explain the difference between /health readiness and the first real /search request. They are different metrics.",
   },
   {
     section: "Load: space",
-    title: "Zapytanie space: liniowe skanowanie obciąża oba runtime'y",
+    title: "Query space: linear scanning stresses both runtimes",
     type: "load-space",
     notes:
-      "Zapytanie space dotyka tekstowego skanowania. Spin ma wyższy request rate, ale przy dużej współbieżności ma gorszy ogon opóźnień.",
+      "The space query exercises text scanning. Spin has higher request rate, but worse tail latency at high concurrency.",
   },
   {
     section: "Load: empty",
-    title: "Puste zapytanie pokazuje koszt ścieżki runtime/HTTP",
+    title: "Empty query exposes runtime/HTTP path overhead",
     type: "load-empty",
     notes:
-      "Puste zapytanie jest lekkie aplikacyjnie, więc bardzo mocno ujawnia różnicę narzutu runtime i serwera HTTP.",
+      "The empty query is application-light, so it strongly exposes runtime and HTTP server overhead.",
   },
   {
-    section: "Pamięć",
-    title: "Memory: metryki są porównywalne operacyjnie, ale nie identyczne",
+    section: "Memory",
+    title: "Memory: useful operationally, not identical accounting",
     type: "memory",
     notes:
-      "OCI mierzymy przez docker stats, Spin przez RSS drzewa procesów. To trzeba powiedzieć głośno, żeby wniosek był uczciwy.",
+      "OCI is measured via docker stats; Spin is measured as process-tree RSS. Say this clearly so the conclusion stays honest.",
   },
   {
     section: "Demo",
-    title: "Demo: pokazujemy zgodność, nie odpalamy pełnego benchmarku na żywo",
+    title: "Demo: show parity, not a full live benchmark run",
     type: "demo",
     notes:
-      "Demo ma trwać kilka minut: health, version, stats, search, compare_results i pokazanie finalnych wykresów.",
+      "The demo is a few minutes: health, version, stats, legacy search, enhanced search, compare_results, and saved charts.",
   },
   {
-    section: "Wnioski",
+    section: "Conclusions",
     title: "Kiedy ten stack jest sensowny?",
     type: "conclusion",
     notes:
-      "Kończymy zniuansowanym wnioskiem: Spin/WASM jest obiecujący dla małych izolowanych usług, OCI nadal wygrywa dojrzałością operacyjną.",
+      "End with the nuanced conclusion: Spin/WASM is promising for small isolated services; OCI still wins on operational maturity.",
   },
 ];
 
@@ -258,12 +258,12 @@ function titleSlide(slide, ctx, model) {
     fontSize: 23,
     color: C.muted,
   });
-  metric(slide, ctx, 74, 392, "44 471", "filmów w fixture", C.teal);
-  metric(slide, ctx, 334, 392, "1 core", "wspólny Rust core", C.green);
-  metric(slide, ctx, 594, 392, "2 runtime'y", "Spin/WASI i OCI", C.amber);
+  metric(slide, ctx, 74, 392, "44,471", "movies in fixture", C.teal);
+  metric(slide, ctx, 334, 392, "1 core", "shared Rust core", C.green);
+  metric(slide, ctx, 594, 392, "2 runtimes", "Spin/WASI and OCI", C.amber);
   ctx.addShape(slide, { x: 925, y: 95, w: 250, h: 380, fill: C.pale, line: ctx.line(C.line, 1) });
   ctx.addText(slide, {
-    text: "Benchmark mikroserwisu HTTP\nbez udawania zgodności Meilisearch",
+    text: "HTTP microservice benchmark\nwithout pretending full Meilisearch parity",
     x: 955,
     y: 150,
     w: 190,
@@ -275,7 +275,7 @@ function titleSlide(slide, ctx, model) {
     valign: "middle",
   });
   ctx.addText(slide, {
-    text: "Pełny przebieg: 2026-05-24",
+    text: "Full run: 2026-05-24",
     x: 955,
     y: 334,
     w: 190,
@@ -293,11 +293,11 @@ function bulletsSlide(slide, ctx, model) {
 
 function stackSlide(slide, ctx) {
   const items = [
-    ["WebAssembly", "przenośny format binarny i sandbox wykonania", C.blue],
-    ["WASI", "kontrolowane interfejsy: HTTP, filesystem, clock, random", C.green],
-    ["wasmtime", "runtime wykonujący komponenty poza przeglądarką", C.teal],
-    ["Spin", "framework i CLI dla mikroserwisów WebAssembly", C.amber],
-    ["OCI", "standard obrazu i runtime kontenera jako baseline", C.red],
+    ["WebAssembly", "portable binary format and execution sandbox", C.blue],
+    ["WASI", "controlled interfaces: HTTP, filesystem, clock, random", C.green],
+    ["wasmtime", "runtime executing components outside the browser", C.teal],
+    ["Spin", "framework and CLI for WebAssembly microservices", C.amber],
+    ["OCI", "container image and runtime standard used as the baseline", C.red],
   ];
   items.forEach(([name, desc, color], i) => {
     const y = 156 + i * 86;
@@ -309,20 +309,20 @@ function stackSlide(slide, ctx) {
 }
 
 function applicationSlide(slide, ctx) {
-  callout(slide, ctx, "Aplikacja jest prosta celowo: ma odsłonić koszt runtime'u, a nie imitować pełny silnik wyszukiwarki.", 70, 145, 1080, 70, C.green);
+  callout(slide, ctx, "The app is compact by design: it exposes runtime cost while still offering opt-in search-product features for the demo.", 70, 145, 1080, 70, C.green);
   metric(slide, ctx, 90, 260, "GET", "/health · /version · /stats · /movies", C.teal, 355);
-  metric(slide, ctx, 505, 260, "POST", "/search { q, offset, limit }", C.amber, 315);
-  metric(slide, ctx, 880, 260, "ranking", "tokeny, pola, id rosnąco", C.blue, 270);
+  metric(slide, ctx, 505, 260, "POST", "/search and /suggest", C.amber, 315);
+  metric(slide, ctx, 880, 260, "ranking", "tokens, fields, id ascending", C.blue, 270);
   bulletList(slide, ctx, 120, 405, [
-    "Deduplikacja id metodą last-write-wins",
-    "Brak typo tolerance, fuzzy rankingu i reguł Meilisearch",
-    "Puste zapytanie zwraca deterministyczną listę po id",
-    "Zapytanie space skanuje pola title, genre i overview",
+    "Last-write-wins deduplication by id",
+    "Filters, facets, sorting, highlights, suggestions, typo tolerance",
+    "Empty query returns a deterministic id-ordered list",
+    "Legacy benchmark queries stay backward compatible",
   ], 24, 46);
 }
 
 function architectureSlide(slide, ctx) {
-  box(slide, ctx, 430, 155, 420, 92, "movie-search-core", "fixture · tokenizacja · ranking · response types", C.teal);
+  box(slide, ctx, 430, 155, 420, 92, "movie-search-core", "fixture · ranking · filters · facets · suggestions", C.teal);
   box(slide, ctx, 120, 345, 330, 92, "Spin adapter", "WASI HTTP component\n127.0.0.1:8080", C.blue);
   box(slide, ctx, 830, 345, 330, 92, "OCI adapter", "native Rust HTTP server\n127.0.0.1:8081", C.green);
   box(slide, ctx, 410, 505, 460, 74, "Benchmark harness", "smoke · parity · cold start · load · memory", C.amber);
@@ -338,10 +338,10 @@ function architectureSlide(slide, ctx) {
 
 function methodologySlide(slide, ctx) {
   const steps = [
-    ["1", "Testy i build", "cargo test, spin build, docker compose build"],
-    ["2", "Parytet", "te same hit.id dla 5 zapytań"],
-    ["3", "Cold start", "20 powtórzeń na runtime"],
-    ["4", "Load", "concurrency 10, 50, 100, 200"],
+    ["1", "Tests and build", "cargo test, spin build, docker compose build"],
+    ["2", "Parity", "same hit.id plus enhanced payload"],
+    ["3", "Cold start", "20 repetitions per runtime"],
+    ["4", "Load", "space, empty, enhanced; c=10/50/100/200"],
     ["5", "Memory", "Docker stats vs host process RSS"],
   ];
   steps.forEach(([n, title, desc], i) => {
@@ -351,16 +351,16 @@ function methodologySlide(slide, ctx) {
     ctx.addText(slide, { text: title, x: x + 12, y: 264, w: 126, h: 30, fontSize: 17, bold: true, color: C.ink, align: "center" });
     ctx.addText(slide, { text: desc, x: x + 12, y: 299, w: 126, h: 52, fontSize: 12, color: C.muted, align: "center" });
   });
-  callout(slide, ctx, "Pełny benchmark: benchmarks/run_all.sh. Demo pokazuje zgodność i artefakty, nie uruchamia pełnego testu obciążeniowego.", 110, 420, 980, 82, C.amber);
+  callout(slide, ctx, "Full benchmark: benchmarks/run_all.sh. The demo shows parity and artifacts; it does not run the full load test live.", 110, 420, 980, 82, C.amber);
 }
 
 function paritySlide(slide, ctx) {
-  metric(slide, ctx, 84, 158, "0", "błędów walidacji", C.green, 260);
-  metric(slide, ctx, 394, 158, "44 471", "documentCount", C.teal, 260);
-  metric(slide, ctx, 704, 158, "5", "zapytań parity", C.blue, 260);
+  metric(slide, ctx, 84, 158, "0", "validation errors", C.green, 260);
+  metric(slide, ctx, 394, 158, "44,471", "documentCount", C.teal, 260);
+  metric(slide, ctx, 704, 158, "5+", "parity queries", C.blue, 260);
   ctx.addShape(slide, { x: 90, y: 330, w: 1030, h: 210, fill: C.ink, line: ctx.line() });
   ctx.addText(slide, {
-    text: "'space': [62, 957, 1542, 2157, ...]\n'toy story': [862, 863, 10193, ...]\n'dark knight': [155, 29751, 49026, ...]\n'': [2, 3, 5, 6, 11, ...]\nSpin and OCI movie-search results match.",
+    text: "'space': [62, 957, 1542, 2157, ...]\n'toy story': [862, 863, 10193, ...]\n'dark knight': [155, 29751, 49026, ...]\nenhanced: filters + facets + highlights\n/suggest: same ranked suggestions\nSpin and OCI movie-search results match.",
     x: 120,
     y: 356,
     w: 970,
@@ -377,7 +377,7 @@ async function coldSlide(slide, ctx) {
   metric(slide, ctx, 370, 168, "144.2 ms", "Spin p95 /health", C.teal, 245);
   metric(slide, ctx, 92, 332, "377.0 ms", "OCI p95 first search", C.amber, 245);
   metric(slide, ctx, 370, 332, "217.5 ms", "Spin p95 first search", C.blue, 245);
-  ctx.addText(slide, { text: "Interpretacja: /health mierzy gotowość procesu, a pierwszy /search mierzy już realną ścieżkę aplikacji.", x: 110, y: 525, w: 1020, h: 42, fontSize: 20, color: C.muted, align: "center" });
+  ctx.addText(slide, { text: "Interpretation: /health measures process readiness; first /search measures the real application path.", x: 110, y: 525, w: 1020, h: 42, fontSize: 20, color: C.muted, align: "center" });
 }
 
 async function loadSpaceSlide(slide, ctx) {
@@ -386,7 +386,7 @@ async function loadSpaceSlide(slide, ctx) {
   metric(slide, ctx, 372, 168, "54.0 req/s", "OCI c=10", C.green, 250);
   metric(slide, ctx, 82, 332, "168 ms", "Spin p95 c=10", C.blue, 250);
   metric(slide, ctx, 372, 332, "211 ms", "OCI p95 c=10", C.amber, 250);
-  callout(slide, ctx, "Dla space oba warianty wykonują kosztowne liniowe skanowanie tekstu; przy wysokiej współbieżności rośnie tail latency.", 100, 540, 1000, 58, C.teal);
+  callout(slide, ctx, "For space, both variants perform expensive linear text scanning; at high concurrency, tail latency grows.", 100, 540, 1000, 58, C.teal);
 }
 
 async function loadEmptySlide(slide, ctx) {
@@ -395,7 +395,7 @@ async function loadEmptySlide(slide, ctx) {
   metric(slide, ctx, 378, 168, "133 req/s", "Spin c=10", C.teal, 260);
   metric(slide, ctx, 78, 332, "95.7 ms", "OCI p95 c=200", C.blue, 260);
   metric(slide, ctx, 378, 332, "3636 ms", "Spin p95 c=200", C.red, 260);
-  callout(slide, ctx, "Puste zapytanie jest lekkie aplikacyjnie, więc mocno ujawnia narzut ścieżki HTTP/runtime.", 100, 540, 1000, 58, C.amber);
+  callout(slide, ctx, "The empty query is application-light, so it exposes HTTP/runtime overhead strongly.", 100, 540, 1000, 58, C.amber);
 }
 
 async function memorySlide(slide, ctx) {
@@ -405,22 +405,23 @@ async function memorySlide(slide, ctx) {
   bulletList(slide, ctx, 115, 360, [
     "OCI: docker stats / cgroup view",
     "Spin: host process tree RSS",
-    "Wniosek: porównanie operacyjne, nie identyczna rachunkowość",
+    "Conclusion: operational comparison, not identical accounting",
   ], 22, 42);
 }
 
 function demoSlide(slide, ctx) {
   const steps = [
-    "Uruchom Spin :8080 i OCI :8081",
-    "Pokaż /health, /version, /stats",
-    "Wyślij POST /search dla q=space",
-    "Uruchom benchmarks/compare_results.sh",
-    "Pokaż CSV i wykresy z pełnego benchmarku",
+    "Start Spin :8080 and OCI :8081",
+    "Show /health, /version, /stats",
+    "Send POST /search for q=space",
+    "Enable enhanced search and call /suggest",
+    "Run benchmarks/compare_results.sh",
+    "Show CSVs and plots from the full benchmark",
   ];
   bulletList(slide, ctx, 105, 170, steps, 25, 58);
   ctx.addShape(slide, { x: 740, y: 180, w: 340, h: 260, fill: C.ink, line: ctx.line() });
   ctx.addText(slide, {
-    text: "curl /version\ncurl /stats\ncurl -X POST /search\nbenchmarks/compare_results.sh\nls results/plots",
+    text: "curl /version\ncurl /stats\ncurl -X POST /search\ncurl -X POST /suggest\nbenchmarks/compare_results.sh\nls results/plots",
     x: 770,
     y: 218,
     w: 290,
@@ -429,14 +430,14 @@ function demoSlide(slide, ctx) {
     color: "#E5E7EB",
     typeface: ctx.fonts.mono,
   });
-  callout(slide, ctx, "Pełny benchmark trwa kilka-kilkanaście minut, więc live demo pokazuje procedurę i dowód parytetu.", 122, 540, 980, 58, C.blue);
+  callout(slide, ctx, "The full benchmark takes several minutes or more, so the live demo shows the procedure and parity proof.", 122, 540, 980, 58, C.blue);
 }
 
 function conclusionSlide(slide, ctx) {
   const cols = [
-    ["Spin/WASM ma sens gdy", ["mały izolowany HTTP component", "edge/serverless/plugin", "ważna przenośność i sandboxing"], C.teal],
-    ["OCI pozostaje lepsze gdy", ["potrzebna dojrzałość toolingowa", "storage-heavy service", "precyzyjna rachunkowość zasobów"], C.green],
-    ["Nasz wynik", ["parytet funkcjonalny: tak", "wydajność: zależna od ścieżki", "Meilisearch port: feasibility blocker"], C.amber],
+    ["Spin/WASM fits when", ["small isolated HTTP component", "edge/serverless/plugin", "portability and sandboxing matter"], C.teal],
+    ["OCI remains better when", ["mature tooling is required", "storage-heavy service", "precise resource accounting"], C.green],
+    ["Our result", ["functional parity: yes", "performance: endpoint-dependent", "Meilisearch port: feasibility blocker"], C.amber],
   ];
   cols.forEach(([title, bullets, color], i) => {
     const x = 78 + i * 390;
@@ -444,7 +445,7 @@ function conclusionSlide(slide, ctx) {
     ctx.addText(slide, { text: title, x: x + 24, y: 194, w: 280, h: 56, fontSize: 22, bold: true, color });
     bulletList(slide, ctx, x + 34, 276, bullets, 19, 52, 250);
   });
-  ctx.addText(slide, { text: "Najważniejsze: benchmark jest uczciwy, bo porównuje ten sam kod aplikacyjny.", x: 130, y: 566, w: 940, h: 42, fontSize: 25, bold: true, color: C.ink, align: "center" });
+  ctx.addText(slide, { text: "Most important: the benchmark is fair because it compares the same application code.", x: 130, y: 566, w: 940, h: 42, fontSize: 25, bold: true, color: C.ink, align: "center" });
 }
 
 function bulletList(slide, ctx, x, y, items, size = 22, gap = 50, width = 900) {

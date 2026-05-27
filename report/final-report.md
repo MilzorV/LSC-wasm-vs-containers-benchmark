@@ -18,6 +18,10 @@ We abandoned a direct comparison with Meilisearch because official Meilisearch r
 memory-mapped storage, and native runtime assumptions that could not be ported 1:1 to Spin/WASI
 within the project.
 
+To make the demo stronger without changing the fairness model, the shared core now includes
+opt-in Meilisearch-inspired features: filters, facets, sorting, highlighting, suggestions, and
+lightweight typo tolerance. Legacy benchmark payloads still work unchanged.
+
 ## Final artifacts
 
 - Report: `report/final-report.pdf`.
@@ -32,6 +36,8 @@ within the project.
 
 - Functional parity: Spin and OCI return the same `hit.id` for queries `space`, `toy story`,
   `dark knight`, `romance`, and the empty query.
+- Enhanced parity: both runtimes match for a filtered/faceted/highlighted typo-tolerant search
+  payload and for `/suggest`.
 - Cold start `/health` p95: OCI `28.420 ms`, Spin `144.220 ms`.
 - Cold start + first `/search` p95: OCI `376.983 ms`, Spin `217.504 ms`.
 - Empty query, concurrency 10: OCI `3314.9 req/s`, Spin `132.8 req/s`.
@@ -45,6 +51,8 @@ Full benchmark:
 ```bash
 benchmarks/run_all.sh
 ```
+
+The load harness records `space`, empty, and `enhanced` search scenarios.
 
 Build the report:
 

@@ -11,6 +11,15 @@ import urllib.request
 
 spin_url, oci_url = sys.argv[1], sys.argv[2]
 queries = ["space", "toy story", "dark knight", "romance", ""]
+enhanced_payload = {
+    "q": "spce",
+    "limit": 5,
+    "filter": {"genre": ["Science Fiction"], "year": {"gte": 1970, "lte": 2026}},
+    "facets": ["genre", "year"],
+    "highlight": ["title", "overview"],
+    "typoTolerance": True,
+    "debugRanking": True,
+}
 
 
 def post_json(base_url, path, payload):
@@ -37,6 +46,8 @@ def stable_search_shape(response):
         "limit": response["limit"],
         "estimatedTotalHits": response["estimatedTotalHits"],
         "hitIds": [hit["id"] for hit in response["hits"]],
+        "facetDistribution": response.get("facetDistribution"),
+        "facetStats": response.get("facetStats"),
     }
 
 
@@ -60,6 +71,24 @@ for query in queries:
         print("OCI:", json.dumps(oci, indent=2), file=sys.stderr)
         raise SystemExit(1)
     print(f"{query!r}: {spin['hitIds']}")
+
+spin = stable_search_shape(post_json(spin_url, "/search", enhanced_payload))
+oci = stable_search_shape(post_json(oci_url, "/search", enhanced_payload))
+if spin != oci:
+    print("Mismatch for enhanced query:", file=sys.stderr)
+    print("Spin:", json.dumps(spin, indent=2), file=sys.stderr)
+    print("OCI:", json.dumps(oci, indent=2), file=sys.stderr)
+    raise SystemExit(1)
+print(f"enhanced typo/filter/facet query: {spin['hitIds']}")
+
+spin_suggest = post_json(spin_url, "/suggest", {"q": "dark kn", "limit": 5})
+oci_suggest = post_json(oci_url, "/suggest", {"q": "dark kn", "limit": 5})
+if spin_suggest["suggestions"] != oci_suggest["suggestions"]:
+    print("Suggestion mismatch:", file=sys.stderr)
+    print("Spin:", json.dumps(spin_suggest, indent=2), file=sys.stderr)
+    print("OCI:", json.dumps(oci_suggest, indent=2), file=sys.stderr)
+    raise SystemExit(1)
+print(f"suggestions: {spin_suggest['suggestions']}")
 
 print("Spin and OCI movie-search results match.")
 PY

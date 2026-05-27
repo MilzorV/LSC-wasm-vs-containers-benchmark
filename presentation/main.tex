@@ -180,7 +180,7 @@
     box/.style={draw, rounded corners=2pt, align=center, inner sep=7pt, minimum height=0.9cm},
     arrow/.style={->, thick, DeckGray}
   ]
-    \node[box, fill=DeckTeal!10, draw=DeckTeal, minimum width=4.8cm] (core) at (0,1.4) {\textbf{movie-search-core}\\fixture loading, tokenization, ranking, responses};
+    \node[box, fill=DeckTeal!10, draw=DeckTeal, minimum width=5.3cm] (core) at (0,1.4) {\textbf{movie-search-core}\\fixture, ranking, filters, facets, suggestions};
     \node[box, fill=DeckBlue!9, draw=DeckBlue, minimum width=3.8cm] (spin) at (-3.9,-0.2) {\textbf{Spin adapter}\\WASI HTTP component\\\texttt{127.0.0.1:8080}};
     \node[box, fill=DeckGreen!9, draw=DeckGreen, minimum width=3.8cm] (oci) at (3.9,-0.2) {\textbf{OCI adapter}\\native Rust HTTP server\\\texttt{127.0.0.1:8081}};
     \node[box, fill=DeckAmber!10, draw=DeckAmber, minimum width=5.4cm] (bench) at (0,-1.85) {\textbf{Benchmark harness}\\smoke, parity, cold start, load, memory};
@@ -198,6 +198,40 @@
   \metric{1 core}{shared Rust application logic}{same semantics}
   \hfill
   \metric{2 runtimes}{Spin/wasmtime and OCI}{same API}
+\end{frame}
+
+\begin{frame}[fragile]{Meilisearch-inspired demo features}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\linewidth}
+      \textbf{Added in the shared core}
+      \begin{itemize}
+        \item genre and year filters
+        \item facets and year statistics
+        \item deterministic sorting
+        \item escaped highlights
+        \item opt-in typo tolerance
+        \item \texttt{/suggest} autocomplete
+      \end{itemize}
+
+      \begin{block}{Fairness rule}
+        Legacy benchmark payloads stay unchanged. Enhanced features are opt-in and identical in both adapters.
+      \end{block}
+    \end{column}
+    \begin{column}{0.49\linewidth}
+      \begin{lstlisting}
+{
+  "q": "spce",
+  "filter": {
+    "genre": ["Science Fiction"],
+    "year": {"gte": 1970}
+  },
+  "facets": ["genre", "year"],
+  "highlight": ["title", "overview"],
+  "typoTolerance": true
+}
+      \end{lstlisting}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Why not benchmark full Meilisearch?}
@@ -235,6 +269,7 @@
         \item \texttt{GET /stats}
         \item \texttt{GET /movies?offset=\&limit=}
         \item \texttt{POST /search}
+        \item \texttt{POST /suggest}
       \end{itemize}
 
       \vspace{1mm}
@@ -250,11 +285,12 @@ benchmarks/compare_results.sh
         \item \texttt{dark knight}
         \item \texttt{romance}
         \item empty query
+        \item enhanced filter/facet/highlight query
       \end{itemize}
 
       \vspace{1mm}
       \begin{block}{Acceptance rule}
-        Both runtimes must return the same engine identity, document count, total hits, and ordered \texttt{hit.id} values.
+        Both runtimes must return the same engine identity, document count, total hits, ordered \texttt{hit.id} values, facets, and suggestions.
       \end{block}
     \end{column}
   \end{columns}
@@ -276,6 +312,7 @@ benchmarks/compare_results.sh
       \begin{itemize}
         \item 20 cold-start repeats
         \item load at concurrency 10, 50, 100, 200
+        \item legacy and enhanced search payloads
         \item p50, p95, p99 latency
         \item response validation
       \end{itemize}
@@ -606,6 +643,7 @@ docker compose up --build
 
 benchmarks/compare_results.sh
       \end{lstlisting}
+      \textbf{UI path:} search \texttt{space}, then enable enhanced mode and search \texttt{spce}.
     \end{column}
     \begin{column}{0.43\linewidth}
       \textbf{File-tools}
@@ -629,6 +667,7 @@ curl -X POST /image/resize
     \begin{column}{0.58\linewidth}
       \begin{itemize}
         \item We ran equivalent microservices in Spin/wasmtime and OCI with validated functional parity.
+        \item The demo now includes search-product features, but they live in the same shared core.
         \item Wasm is practical for some serverless-style microservices, especially small isolated request handlers.
         \item OCI remains the safer default for native, storage-heavy, and operations-heavy services.
         \item ``Wasm is lighter than containers'' is too simple: workload shape changed the result.

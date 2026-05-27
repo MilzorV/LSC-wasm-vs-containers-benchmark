@@ -37,6 +37,7 @@ Both runtimes expose the same endpoints:
 - `GET /stats`
 - `GET /movies?offset=&limit=`
 - `POST /search`
+- `POST /suggest`
 
 Search request body:
 
@@ -59,6 +60,30 @@ Search responses include:
 
 `processingTimeMs` is not used for parity checks because it naturally varies by runtime and request.
 
+The search API also supports a Meilisearch-inspired optional surface:
+
+```json
+{
+  "q": "spce",
+  "limit": 5,
+  "filter": {"genre": ["Science Fiction"], "year": {"gte": 1970, "lte": 2026}},
+  "sort": ["year:desc"],
+  "facets": ["genre", "year"],
+  "highlight": ["title", "overview"],
+  "typoTolerance": true,
+  "debugRanking": true
+}
+```
+
+The suggestion endpoint accepts:
+
+```json
+{"q":"dark kn","limit":5,"filter":{"genre":["Action"]}}
+```
+
+The enhanced fields are opt-in. Legacy benchmark payloads still use only `q`,
+`offset`, and `limit`, so historical result IDs remain comparable.
+
 ## Search Semantics
 
 The ranking is intentionally simple and deterministic:
@@ -70,6 +95,16 @@ The ranking is intentionally simple and deterministic:
 5. break remaining ties by ascending `id`.
 
 Empty queries return all documents by ascending `id`.
+
+Optional features are implemented in the shared core and therefore remain
+identical for Spin and OCI:
+
+- filters: case-insensitive genre membership and inclusive year ranges;
+- facets: genre distribution and year min/max over matched documents;
+- sorting: year, title, or id with relevance and id tie-breakers;
+- highlighting: escaped formatted fields with `<mark>` tags;
+- typo tolerance: Levenshtein matching when explicitly enabled;
+- suggestions: title prefixes first, then title substrings, then ascending id.
 
 ## Acceptance Checks
 
@@ -119,6 +154,7 @@ The benchmark scripts measure:
 - optional total cold path from process start through first successful search (`total_cold_path_ms`);
 - search throughput for `POST /search` with `{"q":"space"}`;
 - empty-query throughput for `POST /search` with `{"q":""}`;
+- enhanced-search throughput for filters, facets, highlights, typo tolerance, and debug ranking;
 - idle and under-load memory for both systems;
 - latency percentiles p50, p95, p99;
 - error counts and response validation;
@@ -190,6 +226,10 @@ Load raw CSV:
 ```text
 run_id,repeat,system,query,concurrency,request_id,success,status,latency_ms,error
 ```
+
+The `query` column is a scenario label. It is either the literal query string
+(`space`), empty for the legacy empty-query scenario, or `enhanced` for the
+Meilisearch-inspired payload described above.
 
 Reference `hey` CSV:
 

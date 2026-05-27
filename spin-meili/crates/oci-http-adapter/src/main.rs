@@ -1,7 +1,7 @@
 use std::env;
 use std::sync::OnceLock;
 
-use movie_search_core::{MovieSearch, SearchRequest, DEFAULT_LIMIT};
+use movie_search_core::{MovieSearch, SearchRequest, SuggestRequest, DEFAULT_LIMIT};
 use serde::Serialize;
 use static_assets::lookup;
 use tiny_http::{Header, Request, Response, Server, StatusCode};
@@ -41,9 +41,7 @@ fn route(mut request: Request) -> RoutedResponse {
     if method == "OPTIONS" && is_api_path(&segments) {
         return RoutedResponse {
             request,
-            response: with_cors(
-                Response::from_data(Vec::new()).with_status_code(StatusCode(204)),
-            ),
+            response: with_cors(Response::from_data(Vec::new()).with_status_code(StatusCode(204))),
         };
     }
 
@@ -57,16 +55,22 @@ fn route(mut request: Request) -> RoutedResponse {
             Ok(json(200, &engine().movies(offset, limit)))
         }
         ("POST", ["search"]) => handle_search(&mut request),
+        ("POST", ["suggest"]) => handle_suggest(&mut request),
         ("GET", segs) => lookup(segs)
             .map(|file| static_file(file.contents, file.content_type))
-            .ok_or_else(|| ApiError::new(404, "not_found", format!("route '{path}' was not found"))),
-        (_, ["health"]) | (_, ["version"]) | (_, ["stats"]) | (_, ["movies"]) | (_, ["search"]) => {
-            Err(ApiError::new(
-                405,
-                "method_not_allowed",
-                format!("{method} is not allowed for {path}"),
-            ))
-        }
+            .ok_or_else(|| {
+                ApiError::new(404, "not_found", format!("route '{path}' was not found"))
+            }),
+        (_, ["health"])
+        | (_, ["version"])
+        | (_, ["stats"])
+        | (_, ["movies"])
+        | (_, ["search"])
+        | (_, ["suggest"]) => Err(ApiError::new(
+            405,
+            "method_not_allowed",
+            format!("{method} is not allowed for {path}"),
+        )),
         _ => Err(ApiError::new(
             404,
             "not_found",
@@ -81,7 +85,7 @@ fn route(mut request: Request) -> RoutedResponse {
 fn is_api_path(segments: &[&str]) -> bool {
     matches!(
         segments,
-        ["health"] | ["version"] | ["stats"] | ["movies"] | ["search"]
+        ["health"] | ["version"] | ["stats"] | ["movies"] | ["search"] | ["suggest"]
     )
 }
 
@@ -92,6 +96,19 @@ fn engine() -> &'static MovieSearch {
 }
 
 fn handle_search(request: &mut Request) -> Result<Response<std::io::Cursor<Vec<u8>>>, ApiError> {
+    let search = read_json_body::<SearchRequest>(request)?;
+    Ok(json(200, &engine().search(search)))
+}
+
+fn handle_suggest(request: &mut Request) -> Result<Response<std::io::Cursor<Vec<u8>>>, ApiError> {
+    let suggest = read_json_body::<SuggestRequest>(request)?;
+    Ok(json(200, &engine().suggest(suggest)))
+}
+
+fn read_json_body<T>(request: &mut Request) -> Result<T, ApiError>
+where
+    T: serde::de::DeserializeOwned,
+{
     let mut body = String::new();
     request
         .as_reader()
@@ -104,15 +121,13 @@ fn handle_search(request: &mut Request) -> Result<Response<std::io::Cursor<Vec<u
             )
         })?;
 
-    let search = serde_json::from_str::<SearchRequest>(&body).map_err(|err| {
+    serde_json::from_str::<T>(&body).map_err(|err| {
         ApiError::new(
             400,
             "bad_request",
             format!("request body must be valid JSON: {err}"),
         )
-    })?;
-
-    Ok(json(200, &engine().search(search)))
+    })
 }
 
 fn query_usize(query: &str, name: &str) -> Option<usize> {
@@ -141,7 +156,8 @@ fn static_file(contents: &[u8], content_type: &str) -> Response<std::io::Cursor<
         Response::from_data(contents.to_vec())
             .with_status_code(StatusCode(200))
             .with_header(
-                Header::from_bytes("content-type", content_type).expect("static header must be valid"),
+                Header::from_bytes("content-type", content_type)
+                    .expect("static header must be valid"),
             ),
     )
 }

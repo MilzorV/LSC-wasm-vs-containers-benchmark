@@ -84,6 +84,40 @@ assert len(response["hits"]) == 3, response
 print("hit ids:", ",".join(str(hit["id"]) for hit in response["hits"]))
 '
 
+echo "Checking Spin enhanced search features"
+enhanced_response="$(
+  curl -fsS \
+    -X POST "$SPIN_URL/search" \
+    -H "content-type: application/json" \
+    --data '{"q":"spce","limit":5,"filter":{"genre":["Science Fiction"],"year":{"gte":1970,"lte":2026}},"facets":["genre","year"],"highlight":["title","overview"],"typoTolerance":true,"debugRanking":true}'
+)"
+echo "$enhanced_response"
+printf '%s' "$enhanced_response" | python3 -c '
+import json, sys
+response = json.load(sys.stdin)
+assert response["query"] == "spce", response
+assert response["hits"], response
+assert "facetDistribution" in response, response
+assert "facetStats" in response, response
+assert "rankingInfo" in response, response
+print("enhanced search ok")
+'
+
+echo "Checking Spin suggestions"
+suggest_response="$(
+  curl -fsS \
+    -X POST "$SPIN_URL/suggest" \
+    -H "content-type: application/json" \
+    --data '{"q":"dark kn","limit":5}'
+)"
+echo "$suggest_response"
+printf '%s' "$suggest_response" | python3 -c '
+import json, sys
+response = json.load(sys.stdin)
+assert response["suggestions"], response
+print("suggestions:", ", ".join(response["suggestions"]))
+'
+
 echo "Listing Spin movies"
 curl -fsS "$SPIN_URL/movies?limit=2"
 echo

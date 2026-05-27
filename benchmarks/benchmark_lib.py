@@ -32,6 +32,18 @@ EXPECTED_HIT_IDS = {
     "": [2, 3, 5, 6, 11, 12, 13, 14, 15, 16],
 }
 
+ENHANCED_SEARCH_QUERY = "spce"
+ENHANCED_SEARCH_OPTIONS: dict[str, Any] = {
+    "filter": {
+        "genre": ["Science Fiction"],
+        "year": {"gte": 1970, "lte": 2026},
+    },
+    "facets": ["genre", "year"],
+    "highlight": ["title", "overview"],
+    "typoTolerance": True,
+    "debugRanking": True,
+}
+
 
 @dataclass
 class StartedService:
@@ -61,6 +73,17 @@ def parse_int_csv_arg(value: str) -> list[int]:
 
 def normalize_query(value: str) -> str:
     return "" if value in {"empty", '""'} else value
+
+
+def search_scenario_payload(scenario: str, limit: int) -> tuple[str, dict[str, Any]]:
+    if scenario == "enhanced":
+        return ENHANCED_SEARCH_QUERY, {
+            "q": ENHANCED_SEARCH_QUERY,
+            "limit": limit,
+            **ENHANCED_SEARCH_OPTIONS,
+        }
+    query = normalize_query(scenario)
+    return query, {"q": query, "limit": limit}
 
 
 def build_artifacts(*, spin: bool = True, oci: bool = True) -> None:
@@ -204,8 +227,9 @@ def post_search(
     query: str,
     limit: int = 10,
     timeout: float = 30.0,
+    payload: dict[str, Any] | None = None,
 ) -> tuple[bool, int | None, float, str]:
-    payload = {"q": query, "limit": limit}
+    payload = payload or {"q": query, "limit": limit}
     started = time.perf_counter()
     status, response, error = request_json("POST", f"{url}/search", payload, timeout=timeout)
     latency_ms = (time.perf_counter() - started) * 1000
@@ -213,11 +237,16 @@ def post_search(
     if status != 200:
         return False, status, latency_ms, error or f"unexpected status {status}"
 
-    valid, validation_error = validate_search_response(response, query, limit)
+    valid, validation_error = validate_search_response(response, query, limit, payload)
     return valid, status, latency_ms, validation_error
 
 
-def validate_search_response(response: Any, query: str, limit: int = 10) -> tuple[bool, str]:
+def validate_search_response(
+    response: Any,
+    query: str,
+    limit: int = 10,
+    request_payload: dict[str, Any] | None = None,
+) -> tuple[bool, str]:
     if not isinstance(response, dict):
         return False, "response is not an object"
     if response.get("query") != query:
@@ -227,6 +256,16 @@ def validate_search_response(response: Any, query: str, limit: int = 10) -> tupl
         return False, "hits is not a list"
     if "estimatedTotalHits" not in response:
         return False, "missing estimatedTotalHits"
+
+    request_payload = request_payload or {}
+    requested_facets = request_payload.get("facets") or []
+    if requested_facets and "facetDistribution" not in response:
+        return False, "missing facetDistribution"
+    if "year" in requested_facets and "facetStats" not in response:
+        return False, "missing facetStats"
+    if request_payload.get("highlight"):
+        if hits and not any(isinstance(hit, dict) and hit.get("_formatted") for hit in hits):
+            return False, "highlight requested but no formatted hit was returned"
 
     expected = EXPECTED_HIT_IDS.get(query)
     if expected is not None and limit <= len(expected):

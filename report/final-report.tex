@@ -42,9 +42,11 @@ After an initial analysis, we abandoned comparing Spin with full Meilisearch, be
 official Meilisearch relies on LMDB and assumptions typical of native runtimes that could
 not be ported 1:1 to WASI within the project timeline. Instead, we built a custom,
 deterministic \texttt{movie-search} service in which Spin and OCI share the same application
-code, fixture, and API semantics. Results show full functional parity, a shorter first
-search request on Spin, very fast OCI responses for a simple empty query, and a clearly
-larger observed Spin process RSS under load. We conclude that Spin/WASM is a reasonable
+code, fixture, and API semantics. The service now includes opt-in Meilisearch-inspired
+features such as filters, facets, sorting, highlighting, suggestions, and lightweight typo
+tolerance while preserving the original benchmark payloads. Results show full functional
+parity, a shorter first search request on Spin, very fast OCI responses for a simple empty
+query, and a clearly larger observed Spin process RSS under load. We conclude that Spin/WASM is a reasonable
 candidate for isolated, short-lived HTTP microservices, but OCI containers remain a more
 mature and predictable operational choice, especially for storage-heavy services.
 \end{abstract}
@@ -87,13 +89,22 @@ deployment and isolation differences, not search-engine semantics.
 
 \section{Application and architecture}
 
-The final application is \texttt{movie-search}: a simple HTTP service written in Rust. Both
+The final application is \texttt{movie-search}: a compact HTTP service written in Rust. Both
 runtimes use the same \texttt{movie-search-core} library, the same \texttt{fixtures/movies.json}
 file, and the same ranking rules. The fixture contains 44\,471 unique movies after deduplication
 by \texttt{id}. Search is deterministic: tokenization on non-alphanumeric characters,
 case-insensitive substring matching, sorting by the number of matched tokens, field weights
-\texttt{title > genre > overview}, and finally ascending \texttt{id}. Typo tolerance, synonyms,
-and Meilisearch-specific rules were intentionally not implemented.
+\texttt{title > genre > overview}, and finally ascending \texttt{id}. Empty queries still return
+all documents by ascending \texttt{id}; this preserves the original benchmark semantics.
+
+To make the demo closer to a real search product without compromising fairness, we added an
+optional Meilisearch-inspired feature layer inside the shared core. \texttt{POST /search}
+accepts filters over genre and year, deterministic sorting by year, title, or id, facet
+distribution for genre, year min/max statistics, escaped highlights using \texttt{<mark>},
+and opt-in typo tolerance based on Levenshtein distance. Both adapters also expose
+\texttt{POST /suggest}, which ranks title prefix matches before title substring matches.
+These features are not a reimplementation of Meilisearch, but they make the practical API
+more impressive while keeping Spin and OCI on exactly the same application code path.
 
 \begin{figure}[H]
 \centering
@@ -115,19 +126,23 @@ and Meilisearch-specific rules were intentionally not implemented.
 \end{figure}
 
 The public API is shared by both variants: \texttt{GET /health}, \texttt{GET /version},
-\texttt{GET /stats}, \texttt{GET /movies?offset=\&limit=}, and \texttt{POST /search}. Spin
-runs locally on port 8080, and the OCI variant on port 8081.
+\texttt{GET /stats}, \texttt{GET /movies?offset=\&limit=}, \texttt{POST /search}, and
+\texttt{POST /suggest}. Spin runs locally on port 8080, and the OCI variant on port 8081.
 
 \section{Methodology}
 
 Before performance measurement, we run unit tests, build the Spin component, build the OCI
 image, and run smoke/parity checks. The script \texttt{benchmarks/compare\_results.sh} compares
 engine, document count, hit count, and \texttt{hit.id} lists for queries \texttt{space},
-\texttt{toy story}, \texttt{dark knight}, \texttt{romance}, and the empty query.
+\texttt{toy story}, \texttt{dark knight}, \texttt{romance}, and the empty query. It also compares
+one enhanced payload with filters, facets, highlighting, typo tolerance, and suggestions.
 
 The full benchmark was run with \texttt{benchmarks/run\_all.sh}. It includes 20 cold-start
-repetitions, load tests on \texttt{POST /search} for queries \texttt{space} and empty at
-concurrency 10, 50, 100, and 200, and memory samples in idle and under-load states.
+repetitions, load tests on \texttt{POST /search} for queries \texttt{space}, empty, and
+\texttt{enhanced} at concurrency 10, 50, 100, and 200, and memory samples in idle and
+under-load states. The historical tables in this report show the legacy \texttt{space} and
+empty scenarios; the current harness now records the enhanced scenario as a separate CSV
+label so it can be analyzed without overwriting earlier results.
 Environment: Apple M4, 10 cores, 24 GiB RAM, macOS 15.6, Spin 3.6.3, Docker 28.5.1, Rust
 1.95.0. The Docker image was built before the cold-start measurement; build time is not part
 of the result.
@@ -238,6 +253,8 @@ beforehand; during the presentation we show a reproducible path:
   \item start Spin on \texttt{127.0.0.1:8080} and OCI on \texttt{127.0.0.1:8081};
   \item check \texttt{/health}, \texttt{/version}, and \texttt{/stats};
   \item run one \texttt{space} search;
+  \item run an enhanced search with genre/year filters, typo tolerance, highlights, and facets;
+  \item call \texttt{/suggest} for title autocomplete;
   \item run \texttt{benchmarks/compare\_results.sh};
   \item show the final charts and CSV files.
 \end{enumerate}
@@ -262,13 +279,14 @@ three kinds of raw CSV data, and generates processed files:
 \path{results/plots}. Raw data from the final run are kept in \path{results/raw}; earlier pilot
 data are not mixed with the final results.
 
-There are three main interpretive limitations. First, the application does not use an inverted
-index: \texttt{space} search is intentionally simple text scanning, so it does not compare
-production search-engine quality. Second, cold-start measurement depends on the local host,
-system cache, and the fact that the OCI image was built beforehand. Third, Spin and OCI memory
-are measured from different tooling perspectives. Conclusions should therefore be treated as
-the outcome of a controlled local experiment, not a universal characterization of all WASM and
-container workloads.
+There are four main interpretive limitations. First, the application does not use an inverted
+index: even the enhanced search path is still deterministic fixture scanning, so it does not
+compare production search-engine quality. Second, typo tolerance and highlighting are lightweight
+feature demonstrations, not a replacement for Meilisearch's ranking engine. Third, cold-start
+measurement depends on the local host, system cache, and the fact that the OCI image was built
+beforehand. Fourth, Spin and OCI memory are measured from different tooling perspectives.
+Conclusions should therefore be treated as the outcome of a controlled local experiment, not a
+universal characterization of all WASM and container workloads.
 
 \section{Conclusions}
 
@@ -282,9 +300,10 @@ model, and very good performance for simple native paths.
 In our benchmark, OCI had faster \texttt{/health} readiness, Spin had a faster first search
 request after startup, and load results depended strongly on the query. The empty query clearly
 favored OCI, while the \texttt{space} query showed higher Spin throughput with worse latency tails
-at high concurrency. The Meilisearch attempt remains a valuable appendix: a storage-heavy system
-built on LMDB and mmap is not a good candidate for a simple WASI port without substantial
-architectural changes.
+at high concurrency. The enhanced feature path gives a more realistic demo surface and is now
+part of the benchmark harness, but it remains fair because the implementation lives in the shared
+core. The Meilisearch attempt remains a valuable appendix: a storage-heavy system built on LMDB
+and mmap is not a good candidate for a simple WASI port without substantial architectural changes.
 
 \begin{thebibliography}{9}
 \bibitem{webassembly}

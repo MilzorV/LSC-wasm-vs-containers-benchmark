@@ -8,6 +8,12 @@ const OCI_URL = params.get("oci") || "http://127.0.0.1:8081";
 document.getElementById("spin-label").textContent = SPIN_URL.replace(/^https?:\/\//, "");
 document.getElementById("oci-label").textContent = OCI_URL.replace(/^https?:\/\//, "");
 
+const compareForm = document.getElementById("compare-form");
+const enhancedToggle = document.createElement("label");
+enhancedToggle.className = "compare-enhanced";
+enhancedToggle.innerHTML = `<input id="compare-enhanced" type="checkbox" /> Enhanced demo: Science Fiction filter, facets, highlights, typo tolerance`;
+compareForm.after(enhancedToggle);
+
 function hitIds(payload) {
   if (!payload || payload.error) {
     return null;
@@ -56,16 +62,26 @@ async function compareSearch(query) {
   document.getElementById("spin-results").innerHTML = `<p class="placeholder">Searching…</p>`;
   document.getElementById("oci-results").innerHTML = `<p class="placeholder">Searching…</p>`;
 
+  const options = document.getElementById("compare-enhanced").checked
+    ? {
+        filter: { genre: ["Science Fiction"], year: { gte: 1970, lte: 2026 } },
+        facets: ["genre", "year"],
+        highlight: ["title", "overview"],
+        typoTolerance: true,
+        debugRanking: true,
+      }
+    : {};
+
   const [spinPayload, ociPayload] = await Promise.all([
-    remoteSearch(SPIN_URL, query).catch((error) => ({ error: error.message })),
-    remoteSearch(OCI_URL, query).catch((error) => ({ error: error.message })),
+    remoteSearch(SPIN_URL, query, options).catch((error) => ({ error: error.message })),
+    remoteSearch(OCI_URL, query, options).catch((error) => ({ error: error.message })),
   ]);
   renderCompare(document.getElementById("spin-results"), spinPayload);
   renderCompare(document.getElementById("oci-results"), ociPayload);
   updateParity(spinPayload, ociPayload);
 }
 
-document.getElementById("compare-form").addEventListener("submit", (event) => {
+compareForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const query = document.getElementById("compare-query").value.trim();
   if (!query) {

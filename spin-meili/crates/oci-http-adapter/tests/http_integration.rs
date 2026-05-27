@@ -83,6 +83,53 @@ fn health_version_stats_and_search_match_contract() {
 }
 
 #[test]
+fn enhanced_search_and_suggest_match_contract() {
+    let port = free_port();
+    let child = start_server(port);
+    wait_for_health(port);
+    let base = format!("http://127.0.0.1:{port}");
+
+    let search: serde_json::Value = ureq::post(&format!("{base}/search"))
+        .set("content-type", "application/json")
+        .send_json(serde_json::json!({
+            "q": "spce",
+            "limit": 5,
+            "filter": {
+                "genre": ["Science Fiction"],
+                "year": { "gte": 1970, "lte": 2026 }
+            },
+            "facets": ["genre", "year"],
+            "highlight": ["title", "overview"],
+            "typoTolerance": true,
+            "debugRanking": true
+        }))
+        .expect("enhanced search")
+        .into_json()
+        .expect("enhanced search json");
+    assert_eq!(search["query"], "spce");
+    assert!(search["estimatedTotalHits"].as_u64().unwrap_or_default() > 0);
+    assert!(search["facetDistribution"]["genre"].is_object());
+    assert!(search["facetStats"]["year"]["min"].is_number());
+    assert!(search["rankingInfo"].is_object());
+    assert!(search["hits"][0]["_rankingInfo"].is_object());
+
+    let suggest: serde_json::Value = ureq::post(&format!("{base}/suggest"))
+        .set("content-type", "application/json")
+        .send_json(serde_json::json!({"q": "dark kn", "limit": 5}))
+        .expect("suggest")
+        .into_json()
+        .expect("suggest json");
+    let suggestions = suggest["suggestions"]
+        .as_array()
+        .expect("suggestions array");
+    assert!(suggestions
+        .iter()
+        .any(|value| value.as_str().unwrap_or_default().contains("Dark Knight")));
+
+    stop_server(child);
+}
+
+#[test]
 fn app_is_served_at_root() {
     let port = free_port();
     let child = start_server(port);

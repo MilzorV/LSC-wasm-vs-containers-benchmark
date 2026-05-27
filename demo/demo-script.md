@@ -75,12 +75,14 @@ Print URLs: `make demo`
 1. Open **Spin app:** http://127.0.0.1:8080/spin  
    - Point out badge **Spin / WASM · :8080** and catalog line (~44k movies).
 2. **Search** for `space` — scroll results, open one movie card (details dialog).
-3. Switch to **Browse** — next page of catalog.
-4. Open **OCI app:** http://127.0.0.1:8081/oci  
+3. Turn on enhanced controls: set genre `Science Fiction`, year from `1970`, enable typo tolerance and highlights, then search for `spce`.
+4. Show autocomplete suggestions while typing `dark kn`.
+5. Switch to **Browse** — next page of catalog.
+6. Open **OCI app:** http://127.0.0.1:8081/oci
    - Same UI, badge **OCI / Docker · :8081**.
-5. Repeat **Search** `space` and optionally **Browse** — same titles/order on the first page.
+7. Repeat `space` or the enhanced search — same titles/order on the first page.
 
-**Say:** One Rust `movie-search-core`; Spin adapter vs OCI adapter. UI is shared; APIs differ only by host/port.
+**Say:** One Rust `movie-search-core`; Spin adapter vs OCI adapter. The Meilisearch-like features are demo features in the shared core, so they do not break benchmark fairness.
 
 ---
 
@@ -91,9 +93,10 @@ Print URLs: `make demo`
 1. Open http://127.0.0.1:8080/ (or `/demo`, same page).
 2. Query `space` → click **Search both**.
 3. Show both columns with latency (ms) and green **Match** badge.
-4. Try a second query: `toy story` or `dark knight` — still **Match** if both backends are healthy.
+4. Enable enhanced demo mode and search `spce`.
+5. Show matching filtered/faceted/highlighted payloads, then try `toy story` or `dark knight` in legacy mode.
 
-**Say:** Compare page calls `:8080` and `:8081` directly (CORS). Mismatch would mean a bug in shared core or adapter.
+**Say:** Compare page calls `:8080` and `:8081` directly (CORS). Mismatch would mean a bug in shared core or adapter, including for enhanced payloads.
 
 **Backup (terminal):**
 
@@ -114,6 +117,7 @@ benchmarks/compare_results.sh
    - **Plots** (cold start, latency, throughput, memory).
    - **Summary tables** (optional detail).
 3. Do **not** run a full benchmark live unless you pre-tested timing.
+4. Mention that load benchmarks now include `space`, empty, and `enhanced` scenarios.
 
 **If `make bench-ui` is running:** mention **Run pilot** runs a shortened `run_all.sh` (~few min) — use only if you have time and a stable machine.
 
@@ -144,6 +148,7 @@ open results/plots/cold_start_p95.png   # macOS
 - Same fixture: **44,471** movies in `fixtures/movies.json`.
 - Spin: `wasm32-wasip2` + WASI HTTP; OCI: native binary in Docker.
 - Search semantics are deterministic (token match, title > genre > overview, tie-break by id).
+- Enhanced search adds filters, facets, sorting, highlights, typo tolerance, and `/suggest`, but only when requested.
 - Benchmarks compare **systems**, not two different search engines.
 
 ---
@@ -175,9 +180,9 @@ cd oci-movie-search && docker compose down
 
 ---
 
-## Komentarz (PL) — skrót
+## Short recap
 
-1. **Aplikacje:** `/spin` i `/oci` — normalne wyszukiwanie i przeglądanie.
-2. **Porównanie:** `/` — Search both, badge Match.
-3. **Benchmarki:** `/benchmarks` — wykresy z `make analyze`; pilot tylko z `make bench-ui`.
-4. **Uruchomienie:** dwa terminale (Spin + Docker), opcjonalnie trzeci (`make bench-ui`).
+1. **Applications:** `/spin` and `/oci` — normal search, enhanced search, and browsing.
+2. **Comparison:** `/` — Search both, enhanced mode, Match badge.
+3. **Benchmarks:** `/benchmarks` — plots from `make analyze`; pilot runs only through `make bench-ui`.
+4. **Startup:** two terminals (Spin + Docker), optional third terminal for `make bench-ui`.

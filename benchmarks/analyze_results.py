@@ -288,6 +288,15 @@ def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
     print(f"Wrote {path}")
 
 
+def query_label(query: object) -> str:
+    value = str(query)
+    if value == "":
+        return "empty"
+    if value == "enhanced":
+        return "enhanced features"
+    return value
+
+
 def make_plots(
     cold_summary: list[dict[str, object]],
     load_summary: list[dict[str, object]],
@@ -337,7 +346,7 @@ def plot_load_latency(plt, rows: list[dict[str, object]]) -> None:
             if not series:
                 continue
             series.sort(key=lambda row: int(row["concurrency"]))
-            label_query = query if query else "empty"
+            label_query = query_label(query)
             y = [float(row["p95"]) for row in series]
             yerr = [
                 float(row["stddev"]) if row.get("stddev") not in ("", None) else 0.0
@@ -375,7 +384,7 @@ def plot_load_throughput(plt, rows: list[dict[str, object]]) -> None:
             if not series:
                 continue
             series.sort(key=lambda row: int(row["concurrency"]))
-            label_query = query if query else "empty"
+            label_query = query_label(query)
             y = [float(row["request_rate"]) for row in series]
             yerr = [
                 float(row["request_rate_stddev"])
