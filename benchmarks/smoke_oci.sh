@@ -7,12 +7,12 @@ echo "Checking OCI movie-search health at $OCI_URL/health"
 curl -fsS "$OCI_URL/health"
 echo
 
-echo "Checking OCI dashboard at $OCI_URL/"
+echo "Checking OCI app UI at $OCI_URL/"
 curl -fsS "$OCI_URL/" | python3 -c '
 import sys
 body = sys.stdin.read()
-assert "movie-search-dashboard" in body, "dashboard marker missing"
-print("dashboard ok")
+assert "movie-search-app" in body, "app marker missing"
+print("app ui ok")
 '
 echo
 

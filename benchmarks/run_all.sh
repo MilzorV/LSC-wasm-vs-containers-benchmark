@@ -31,7 +31,8 @@ wait_health() {
   return 1
 }
 
-echo "== Build and unit tests =="
+echo "== Build frontend and unit tests =="
+(cd "$ROOT_DIR/frontend" && npm ci && npm run build)
 cargo test --manifest-path "$ROOT_DIR/spin-meili/Cargo.toml"
 (cd "$ROOT_DIR/spin-meili" && spin build)
 (cd "$ROOT_DIR/oci-movie-search" && docker compose build)

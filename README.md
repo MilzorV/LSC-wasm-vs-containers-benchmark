@@ -30,6 +30,7 @@ Required tools:
 - Spin CLI 3.x;
 - Rust with `wasm32-wasip2`;
 - Docker with Compose;
+- Node.js 22+ and npm (frontend build);
 - Bash, curl, and Python 3.
 
 Install the Rust target for the active toolchain:
@@ -42,7 +43,8 @@ rustup target add wasm32-wasip2
 
 ```bash
 cd spin-meili
-spin build
+cd ../frontend && npm ci && npm run build
+cd ../spin-meili && spin build
 spin up --listen 127.0.0.1:8080
 ```
 
@@ -54,7 +56,9 @@ benchmarks/smoke_spin.sh
 
 The Spin service exposes:
 
-- `GET /` and `GET /dashboard` — side-by-side demo UI
+- `GET /` — Vite web app (search + browse)
+- `GET /demo` — runtime comparison demo (benchmark presentation)
+- `GET /assets/*` — frontend static assets
 - `GET /health`
 - `GET /version`
 - `GET /stats`
@@ -108,19 +112,36 @@ The comparison script validates that Spin and OCI return the same engine name, s
 - `romance`
 - empty query
 
-## Dashboard
+## Web app
 
-With both services running, open the movie search app in a browser:
+Build the frontend once, then start a backend:
+
+```bash
+make frontend-build
+make build
+```
+
+With Spin or OCI running, open the app:
 
 ```text
 http://127.0.0.1:8080/
 ```
 
-- **Search** — full-text search with pagination (server default page size, no client limit)
+- **Search** — full-text search with pagination (server default page size)
 - **Browse** — paginated catalog via `GET /movies`
-- **Compare runtimes** — side-by-side Spin vs OCI parity view for demos
+- **Movie details** — click any result card
 
-Switch backend (Spin or OCI) in the header when using Search or Browse.
+Runtime comparison demo (requires both services):
+
+```text
+http://127.0.0.1:8080/demo
+```
+
+Local frontend development (proxies API to Spin on `:8080`):
+
+```bash
+cd frontend && npm run dev
+```
 
 Optional macOS shortcut:
 
@@ -128,7 +149,7 @@ Optional macOS shortcut:
 make demo-open
 ```
 
-Source: [`dashboard/index.html`](dashboard/index.html).
+Source: [`frontend/`](frontend/).
 
 ## Run Benchmarks
 

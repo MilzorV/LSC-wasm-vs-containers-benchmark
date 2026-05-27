@@ -83,18 +83,34 @@ fn health_version_stats_and_search_match_contract() {
 }
 
 #[test]
-fn dashboard_is_served_at_root() {
+fn app_is_served_at_root() {
     let port = free_port();
     let child = start_server(port);
     wait_for_health(port);
 
     let response = ureq::get(&format!("http://127.0.0.1:{port}/"))
         .call()
-        .expect("dashboard");
+        .expect("app root");
     assert_eq!(response.status(), 200);
-    let body = response.into_string().expect("dashboard body");
-    assert!(body.contains("movie-search-dashboard"));
-    assert!(body.contains("Spin / WASM"));
+    let body = response.into_string().expect("app body");
+    assert!(body.contains("movie-search-app"));
+    assert!(body.contains("Movie Search"));
+
+    stop_server(child);
+}
+
+#[test]
+fn demo_is_served_at_demo_route() {
+    let port = free_port();
+    let child = start_server(port);
+    wait_for_health(port);
+
+    let response = ureq::get(&format!("http://127.0.0.1:{port}/demo"))
+        .call()
+        .expect("demo route");
+    assert_eq!(response.status(), 200);
+    let body = response.into_string().expect("demo body");
+    assert!(body.contains("movie-search-demo"));
 
     stop_server(child);
 }

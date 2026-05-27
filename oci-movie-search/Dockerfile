@@ -1,11 +1,15 @@
 FROM rust:1.82-bookworm AS build
 
 WORKDIR /app
+COPY frontend ./frontend
 COPY spin-meili ./spin-meili
 COPY fixtures/movies.json ./fixtures/movies.json
-COPY dashboard ./dashboard
 
-RUN cargo build --manifest-path spin-meili/Cargo.toml --release -p oci-http-adapter
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && cd frontend && npm ci && npm run build \
+    && cd .. \
+    && cargo build --manifest-path spin-meili/Cargo.toml --release -p oci-http-adapter
 
 FROM debian:bookworm-slim
 

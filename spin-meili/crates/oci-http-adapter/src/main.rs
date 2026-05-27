@@ -3,10 +3,10 @@ use std::sync::OnceLock;
 
 use movie_search_core::{MovieSearch, SearchRequest, DEFAULT_LIMIT};
 use serde::Serialize;
+use static_assets::lookup;
 use tiny_http::{Header, Request, Response, Server, StatusCode};
 
 const MOVIES_JSON: &str = include_str!("../../../../fixtures/movies.json");
-const DASHBOARD_HTML: &str = include_str!("../../../../dashboard/index.html");
 const DEFAULT_ADDR: &str = "0.0.0.0:7700";
 
 static ENGINE: OnceLock<MovieSearch> = OnceLock::new();
@@ -48,7 +48,6 @@ fn route(mut request: Request) -> RoutedResponse {
     }
 
     let response = match (method.as_str(), segments.as_slice()) {
-        ("GET", []) | ("GET", ["dashboard"]) => Ok(html(200, DASHBOARD_HTML)),
         ("GET", ["health"]) => Ok(json(200, &engine().health())),
         ("GET", ["version"]) => Ok(json(200, &engine().version())),
         ("GET", ["stats"]) => Ok(json(200, &engine().stats())),
@@ -58,6 +57,9 @@ fn route(mut request: Request) -> RoutedResponse {
             Ok(json(200, &engine().movies(offset, limit)))
         }
         ("POST", ["search"]) => handle_search(&mut request),
+        ("GET", segs) => lookup(segs)
+            .map(|file| static_file(file.contents, file.content_type))
+            .ok_or_else(|| ApiError::new(404, "not_found", format!("route '{path}' was not found"))),
         (_, ["health"]) | (_, ["version"]) | (_, ["stats"]) | (_, ["movies"]) | (_, ["search"]) => {
             Err(ApiError::new(
                 405,
@@ -134,13 +136,12 @@ fn cors_header(name: &str, value: &str) -> Header {
     Header::from_bytes(name, value).expect("static cors header must be valid")
 }
 
-fn html(status: u16, body: &str) -> Response<std::io::Cursor<Vec<u8>>> {
+fn static_file(contents: &[u8], content_type: &str) -> Response<std::io::Cursor<Vec<u8>>> {
     with_cors(
-        Response::from_string(body)
-            .with_status_code(StatusCode(status))
+        Response::from_data(contents.to_vec())
+            .with_status_code(StatusCode(200))
             .with_header(
-                Header::from_bytes("content-type", "text/html; charset=utf-8")
-                    .expect("static header must be valid"),
+                Header::from_bytes("content-type", content_type).expect("static header must be valid"),
             ),
     )
 }

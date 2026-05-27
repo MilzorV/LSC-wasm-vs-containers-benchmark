@@ -17,6 +17,7 @@ movie-search-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tiny_http.workspace = true
+static-assets.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

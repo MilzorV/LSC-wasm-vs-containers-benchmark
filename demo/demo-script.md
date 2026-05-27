@@ -10,8 +10,8 @@ Zakładany czas: 3-4 minuty w prezentacji 10-12 minut.
 W terminalu 1:
 
 ```bash
-cd spin-meili
-spin build
+cd frontend && npm ci && npm run build
+cd ../spin-meili && spin build
 spin up --listen 127.0.0.1:8080
 ```
 
@@ -43,52 +43,18 @@ Oczekiwany wynik dla obu usług:
 http://127.0.0.1:8080/
 ```
 
-Zakładka **Search** — wyszukiwarka filmów (wybierz backend Spin lub OCI).
-Zakładka **Browse** — przeglądanie katalogu z paginacją.
-Zakładka **Compare runtimes** — to samo zapytanie na obu runtime'ach i badge **Match**.
+Pokaż **Search** (`space`) i **Browse** — normalna aplikacja do wyszukiwania filmów.
+Kliknij kartę filmu, aby pokazać szczegóły.
 
-W **Compare** wpisz `space` — obie kolumny powinny pokazać te same tytuły (pierwsze ID: 62, 957, 1542…).
+Następnie otwórz demo porównawcze:
 
-1. Pokaż wersję silnika:
-
-```bash
-curl -fsS http://127.0.0.1:8080/version
-curl -fsS http://127.0.0.1:8081/version
+```text
+http://127.0.0.1:8080/demo
 ```
 
-Oczekiwane: oba runtime'y zwracają `engine=movie-search-core`,
-`datasetDocuments=44471`.
+Wpisz `space` — obie kolumny (Spin i OCI) powinny pokazać te same tytuły i badge **Match**.
 
-2. Pokaż statystyki:
-
-```bash
-curl -fsS http://127.0.0.1:8080/stats
-curl -fsS http://127.0.0.1:8081/stats
-```
-
-Oczekiwane:
-
-```json
-{"documentCount":44471}
-```
-
-3. Pokaż realne wyszukiwanie:
-
-```bash
-curl -fsS \
-  -X POST http://127.0.0.1:8080/search \
-  -H 'content-type: application/json' \
-  --data '{"q":"space","limit":3}'
-
-curl -fsS \
-  -X POST http://127.0.0.1:8081/search \
-  -H 'content-type: application/json' \
-  --data '{"q":"space","limit":3}'
-```
-
-Oczekiwane pierwsze `hit.id`: `62`, `957`, `1542`.
-
-4. Uruchom parytet wyników:
+1. Uruchom parytet wyników (backup):
 
 ```bash
 benchmarks/compare_results.sh
@@ -100,43 +66,23 @@ Oczekiwane zakończenie:
 Spin and OCI movie-search results match.
 ```
 
-5. Pokaż artefakty benchmarku:
+2. Pokaż artefakty benchmarku:
 
 ```bash
 ls results/raw results/processed results/plots
-sed -n '1,80p' results/processed/cold_start_summary.csv
-sed -n '1,120p' results/processed/load_summary.csv
-sed -n '1,80p' results/processed/memory_summary.csv
 ```
 
-Pokaż wykresy:
-
-- `results/plots/cold_start_p95.png`
-- `results/plots/load_throughput.png`
-- `results/plots/load_latency_p95.png`
-- `results/plots/memory_peak.png`
+Wykresy: `results/plots/cold_start_p95.png`, `load_throughput.png`, `load_latency_p95.png`, `memory_peak.png`
 
 ## Komentarz Do Demo
 
-Krótka narracja:
-
 - To nie są dwie różne wyszukiwarki, tylko jeden Rust core w dwóch izolacjach.
-- Dashboard w przeglądarce pokazuje parytet wizualnie; curl i `compare_results.sh` to backup.
-- Najpierw udowadniamy zgodność funkcjonalną, dopiero potem rozmawiamy o wydajności.
-- Full benchmark nie jest odpalany na żywo, bo trwa około kilku-kilkunastu minut.
-- Wyniki są już zapisane w CSV i na wykresach, więc demo jest reprodukowalne.
+- `/` to normalna aplikacja; `/demo` to strona porównawcza na prezentację.
+- Full benchmark nie jest odpalany na żywo; wyniki są w CSV i na wykresach.
 
 ## Plan Awaryjny
 
 Jeżeli live runtime nie wystartuje:
 
-1. Pokaż `results/processed/*.csv`.
-2. Pokaż wykresy z `results/plots/`.
-3. Pokaż raw CSV z `results/raw/`.
-4. Wyjaśnij, że pełny benchmark był wykonany komendą:
-
-```bash
-benchmarks/run_all.sh
-```
-
-I że raport korzysta z artefaktów z pełnego przebiegu, a nie z wyników pilota.
+1. Pokaż `results/processed/*.csv` i wykresy z `results/plots/`.
+2. Wyjaśnij, że pełny benchmark był wykonany komendą `benchmarks/run_all.sh`.

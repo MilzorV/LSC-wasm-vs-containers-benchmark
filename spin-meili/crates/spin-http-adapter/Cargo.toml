@@ -16,3 +16,4 @@ movie-search-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 spin-sdk.workspace = true
+static-assets.workspace = true

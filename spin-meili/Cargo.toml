@@ -4,6 +4,7 @@ members = [
     "crates/oci-http-adapter",
     "crates/search-core",
     "crates/spin-http-adapter",
+    "crates/static-assets",
 ]
 
 [workspace.package]
@@ -16,6 +17,7 @@ license = "MIT"
 [workspace.dependencies]
 anyhow = "1"
 movie-search-core = { path = "crates/search-core" }
+static-assets = { path = "crates/static-assets" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 spin-sdk = "5.2.0"

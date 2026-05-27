@@ -1,11 +1,14 @@
-.PHONY: test build smoke benchmark benchmark-pilot analyze report demo clean
+.PHONY: test build frontend-build smoke benchmark benchmark-pilot analyze report demo demo-open clean
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-test:
+frontend-build:
+	cd $(ROOT)/frontend && npm ci && npm run build
+
+test: frontend-build
 	cargo test --manifest-path $(ROOT)/spin-meili/Cargo.toml
 
-build:
+build: frontend-build
 	cd $(ROOT)/spin-meili && spin build
 	cd $(ROOT)/oci-movie-search && docker compose build
 
@@ -27,7 +30,7 @@ report:
 	latexmk -pdf -outdir=$(ROOT)/report -interaction=nonstopmode -halt-on-error $(ROOT)/report/final-report.tex
 
 demo:
-	@echo "See $(ROOT)/demo/demo-script.md"
+	@echo "App: http://127.0.0.1:8080/  Compare demo: http://127.0.0.1:8080/demo"
 
 demo-open:
 	open http://127.0.0.1:8080/

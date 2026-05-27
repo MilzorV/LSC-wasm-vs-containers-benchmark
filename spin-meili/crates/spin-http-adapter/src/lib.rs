@@ -4,9 +4,9 @@ use movie_search_core::{MovieSearch, SearchRequest, DEFAULT_LIMIT};
 use serde::Serialize;
 use spin_sdk::http::{IntoResponse, Method, Request, Response};
 use spin_sdk::http_component;
+use static_assets::lookup;
 
 const MOVIES_JSON: &str = include_str!("../../../../fixtures/movies.json");
-const DASHBOARD_HTML: &str = include_str!("../../../../dashboard/index.html");
 
 static ENGINE: OnceLock<MovieSearch> = OnceLock::new();
 
@@ -30,7 +30,6 @@ fn route(req: Request) -> Response {
     }
 
     let result = match (method, segments.as_slice()) {
-        ("GET", []) | ("GET", ["dashboard"]) => Ok(html(200, DASHBOARD_HTML)),
         ("GET", ["health"]) => Ok(json(200, &engine().health())),
         ("GET", ["version"]) => Ok(json(200, &engine().version())),
         ("GET", ["stats"]) => Ok(json(200, &engine().stats())),
@@ -40,6 +39,9 @@ fn route(req: Request) -> Response {
             Ok(json(200, &engine().movies(offset, limit)))
         }
         ("POST", ["search"]) => handle_search(&req),
+        ("GET", segs) => lookup(segs)
+            .map(|file| static_file(file.contents, file.content_type))
+            .ok_or_else(|| ApiError::new(404, "not_found", format!("route '{path}' was not found"))),
         (_, ["health"]) | (_, ["version"]) | (_, ["stats"]) | (_, ["movies"]) | (_, ["search"]) => {
             Err(ApiError::new(
                 405,
@@ -127,8 +129,16 @@ fn build_response(status: u16, content_type: Option<&str>, body: String) -> Resp
     builder.body(body).build()
 }
 
-fn html(status: u16, body: &str) -> Response {
-    build_response(status, Some("text/html; charset=utf-8"), body.to_string())
+fn build_response_bytes(status: u16, content_type: &str, body: Vec<u8>) -> Response {
+    let mut builder = Response::builder();
+    builder.status(status);
+    cors_headers(&mut builder);
+    builder.header("content-type", content_type);
+    builder.body(body).build()
+}
+
+fn static_file(contents: &[u8], content_type: &str) -> Response {
+    build_response_bytes(200, content_type, contents.to_vec())
 }
 
 fn json<T>(status: u16, value: &T) -> Response
