@@ -1,0 +1,30 @@
+\frametitle{Demo path}
+\begin{columns}[T,onlytextwidth]
+    \begin{column}{0.53\linewidth}
+      \textbf{Movie-search}
+      \begin{lstlisting}[language=bash]
+cd spin-meili
+spin build
+spin up --listen 127.0.0.1:8080
+
+cd oci-movie-search
+docker compose up --build
+
+benchmarks/compare_results.sh
+      \end{lstlisting}
+    \end{column}
+    \begin{column}{0.43\linewidth}
+      \textbf{File-tools}
+      \begin{lstlisting}[language=bash]
+curl http://localhost:3000/routes
+curl http://localhost:8081/routes
+
+curl -X POST /validate/json
+curl -X POST /image/resize
+      \end{lstlisting}
+
+      \begin{block}{Fallback}
+        Show saved CSV files in \texttt{results/processed} and \texttt{bench-results}, then open the plots in \texttt{results/plots}.
+      \end{block}
+    \end{column}
+  \end{columns}

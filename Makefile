@@ -1,4 +1,4 @@
-.PHONY: test build frontend-build smoke benchmark benchmark-pilot analyze report demo demo-open clean
+.PHONY: test build frontend-build smoke benchmark benchmark-pilot analyze report presentation demo demo-open clean
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
@@ -28,6 +28,9 @@ analyze:
 
 report:
 	latexmk -pdf -outdir=$(ROOT)/report -interaction=nonstopmode -halt-on-error $(ROOT)/report/final-report.tex
+
+presentation:
+	$(MAKE) -C $(ROOT)/presentation
 
 demo:
 	@echo "App: http://127.0.0.1:8080/  Compare demo: http://127.0.0.1:8080/demo"
