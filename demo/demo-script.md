@@ -1,10 +1,11 @@
-# Demo Script: Movie Search on Spin/WASM vs OCI
+# Demo Script: Spin/wasmtime vs OCI
 
-**Goal:** Show the same app on two runtimes, prove identical results, then show benchmark evidence.
+**Goal:** Show the same app on two runtimes, prove identical results, show benchmark evidence,
+and briefly demonstrate the second file-tools workload.
 
-**Live demo time:** ~4–5 minutes (fits a 10–12 min talk; leave benchmark *runs* for pre-recorded or backup slides).
+**Live demo time:** ~5–6 minutes. Do not run the full benchmark live; use saved CSV/plots.
 
-**Story arc:** Standalone apps → side-by-side compare → benchmark dashboard.
+**Story arc:** Movie-search parity → benchmark dashboard → file-tools practical workload.
 
 ---
 
@@ -38,6 +39,19 @@ make frontend-build    # re-embed updated dashboard data
 | **2 — OCI** | `cd oci-movie-search && docker compose up` | Container app + static UI on **:8081** |
 | **3 — Bench UI** (optional) | `make bench-ui` | Helper on **:8092** for “Run pilot” in browser |
 
+File-tools is easiest to show after the movie-search flow. It uses a different Docker image,
+so map Docker to host port **18082** to avoid colliding with movie-search OCI on **:8081**.
+
+```bash
+# File-tools Spin
+cd spin-file-tools-sdk4 && spin up --listen 127.0.0.1:3000
+
+# File-tools Docker
+cd docker-file-tools
+docker build -t docker-file-tools:latest .
+docker run --rm -p 18082:8081 docker-file-tools:latest
+```
+
 ### Health check (run once both are up)
 
 ```bash
@@ -61,12 +75,14 @@ make smoke
 | OCI app (search + browse) | http://127.0.0.1:8081/oci |
 | Side-by-side compare | http://127.0.0.1:8080/ |
 | Benchmark dashboard | http://127.0.0.1:8080/benchmarks |
+| File-tools Spin | http://127.0.0.1:3000/routes |
+| File-tools Docker | http://127.0.0.1:18082/routes |
 
 Print URLs: `make demo`
 
 ---
 
-## Live demo — three acts
+## Live demo — four acts
 
 ### Act 1 — Two real applications (~1.5 min)
 
@@ -116,8 +132,10 @@ benchmarks/compare_results.sh
    - **Spin vs OCI** metric cards (cold p95, load p95, throughput, host RSS).
    - **Plots** (cold start, latency, throughput, memory).
    - **Summary tables** (optional detail).
-3. Do **not** run a full benchmark live unless you pre-tested timing.
+3. Do **not** run a full benchmark live.
 4. Mention that load benchmarks now include `space`, empty, and `enhanced` scenarios.
+5. Call out the key chart caveat: OCI-empty dominates throughput because the endpoint does
+   very little application work; read `space` and `enhanced` separately.
 
 **If `make bench-ui` is running:** mention **Run pilot** runs a shortened `run_all.sh` (~few min) — use only if you have time and a stable machine.
 
@@ -132,7 +150,57 @@ open results/plots/cold_start_p95.png   # macOS
 
 ---
 
-## Timing guide (4–5 min live UI only)
+### Act 4 — File-tools practical workload (~1 min)
+
+**Message:** The second workload makes the recommendation practical: lightweight JSON routes
+and image-heavy routes behave differently.
+
+Use ports **3000** for Spin and **18082** for Docker in this demo.
+
+```bash
+curl -fsS http://127.0.0.1:3000/routes | python3 -m json.tool
+curl -fsS http://127.0.0.1:18082/routes | python3 -m json.tool
+```
+
+JSON validation:
+
+```bash
+curl -fsS -X POST http://127.0.0.1:3000/validate/json \
+  -H 'content-type: application/json' \
+  --data '{"id":1,"title":"The Matrix"}' && echo
+
+curl -fsS -X POST http://127.0.0.1:18082/validate/json \
+  -H 'content-type: application/json' \
+  --data '{"id":1,"title":"The Matrix"}' && echo
+```
+
+JSON to CSV:
+
+```bash
+curl -fsS -X POST http://127.0.0.1:3000/convert/json-to-csv \
+  -H 'content-type: application/json' \
+  --data-binary @spin-file-tools-sdk4/sample.json
+```
+
+Image metadata and resize:
+
+```bash
+curl -fsS -X POST http://127.0.0.1:3000/image/metadata \
+  -H 'content-type: image/png' \
+  --data-binary @spin-file-tools-sdk4/input.png | python3 -m json.tool
+
+curl -fsS -X POST 'http://127.0.0.1:18082/image/resize?width=256&height=256&format=png' \
+  -H 'content-type: image/png' \
+  --data-binary @docker-file-tools/input.png \
+  --output /tmp/file-tools-resized.png
+```
+
+**Say:** File-tools confirms the recommendation: Spin can be attractive for small isolated
+request handlers, while Docker is stronger for native/image-heavy paths.
+
+---
+
+## Timing guide (5–6 min live UI only)
 
 | Segment | Time | URL |
 |---------|------|-----|
@@ -140,6 +208,7 @@ open results/plots/cold_start_p95.png   # macOS
 | OCI app: same flow | ~45 s | `/oci` |
 | Compare: Search both + Match | ~60 s | `/` |
 | Benchmark dashboard | ~90 s | `/benchmarks` |
+| File-tools routes + one request | ~60 s | `:3000` and `:18082` |
 
 ---
 
@@ -150,13 +219,14 @@ open results/plots/cold_start_p95.png   # macOS
 - Search semantics are deterministic (token match, title > genre > overview, tie-break by id).
 - Enhanced search adds filters, facets, sorting, highlights, typo tolerance, and `/suggest`, but only when requested.
 - Benchmarks compare **systems**, not two different search engines.
+- File-tools is a second workload: light JSON paths and image-heavy paths tell different stories.
 
 ---
 
 ## Plan B — if a runtime fails
 
-1. Show the **other** app + **benchmarks** page (plots/CSV still valid).
-2. Terminal: `results/processed/*.csv`, `results/plots/*.png`.
+1. Show whichever service is still running plus the benchmark page; plots/CSV are already valid.
+2. Terminal: `results/processed/*.csv`, `results/plots/*.png`, `bench-results/combined-summary.csv`.
 3. Slide: architecture + pre-captured plots from `presentation/` or `report/`.
 4. Explain parity was verified with `make smoke` / `compare_results.sh` before the session.
 
@@ -185,4 +255,4 @@ cd oci-movie-search && docker compose down
 1. **Applications:** `/spin` and `/oci` — normal search, enhanced search, and browsing.
 2. **Comparison:** `/` — Search both, enhanced mode, Match badge.
 3. **Benchmarks:** `/benchmarks` — plots from `make analyze`; pilot runs only through `make bench-ui`.
-4. **Startup:** two terminals (Spin + Docker), optional third terminal for `make bench-ui`.
+4. **File-tools:** `:3000` and `:18082` — routes, JSON validation, conversion, image metadata/resize.

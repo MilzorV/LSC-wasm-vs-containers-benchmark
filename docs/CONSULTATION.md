@@ -84,7 +84,8 @@ id by default.
 ## Deliverables
 
 - Report: `report/final-report.pdf`
-- Presentation: `presentation/movie-search-spin-vs-oci.pdf`
+- Presentation: `presentation/main.pdf`
+- Speaker plan: `presentation/speaker-plan.md`
 - Demo script: `demo/demo-script.md`
 - Reproducible benchmark: `benchmarks/run_all.sh` or `make benchmark`
 

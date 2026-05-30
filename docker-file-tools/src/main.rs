@@ -11,7 +11,7 @@ use image::{DynamicImage, ImageFormat};
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::{json, Map, Value};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::env;
 use std::io::Cursor;
 use std::net::SocketAddr;
@@ -34,13 +34,6 @@ struct Version {
     name: &'static str,
     version: &'static str,
     runtime_target: &'static str,
-}
-
-#[derive(Serialize)]
-struct Timed<T: Serialize> {
-    #[serde(flatten)]
-    value: T,
-    internal_processing_us: u128,
 }
 
 #[derive(Debug, Deserialize)]

@@ -47,7 +47,9 @@ features such as filters, facets, sorting, highlighting, suggestions, and lightw
 tolerance while preserving the original benchmark payloads. Results show full functional
 parity, a shorter cold path to first search on Spin in the final local run, very fast OCI
 responses for a simple empty query, higher Spin throughput on the search-like and enhanced
-paths, and a clearly larger observed Spin process RSS under load. We conclude that Spin/WASM is a reasonable
+paths, and a clearly larger observed Spin process RSS under load. A second file-tools workload
+shows the practical split more clearly: Spin performed well on light JSON routes, while Docker
+was stronger on image-heavy transformations. We conclude that Spin/WASM is a reasonable
 candidate for isolated, short-lived HTTP microservices, but OCI containers remain a more
 mature and predictable operational choice, especially for storage-heavy services.
 \end{abstract}
@@ -215,6 +217,11 @@ Spin & space & 16.8 & 1097.7 & 17.4 & 6312.6 & 20.9 & 10232.0 & 22.4 & 24071.5 \
 \caption{Throughput and p95 latency for \texttt{POST /search}.}
 \end{figure}
 
+The throughput plot is visually dominated by OCI on the empty-query path. We checked this
+against the raw CSV: for c=10, the raw success counts give 2224.556 req/s for OCI empty and
+84.456 req/s for Spin empty, exactly matching the processed summary. This is therefore a real
+measurement outcome for the low-work route, not an aggregation bug.
+
 For the empty query, the native OCI server was decisively faster. This is a low application-cost
 path: it returns the first documents deterministically without expensive text filtering. For the
 \texttt{space} and \texttt{enhanced} queries, Spin achieved higher throughput in this run, and
@@ -253,6 +260,58 @@ perspective. The final report therefore draws a cautious conclusion: Spin offers
 capability-oriented isolation model, but it requires deliberate measurement and does not
 automatically guarantee lower overhead.
 
+\section{Second workload: file-tools}
+
+The \texttt{file-tools} application complements movie-search with a more operational workload:
+JSON validation, CSV conversion, image metadata, grayscale, and resize. The two variants are
+\texttt{spin-file-tools-sdk4}, a Spin SDK 4 WASI component, and \texttt{docker-file-tools}, a
+native Rust/Axum service packaged as a Docker image. This workload is not a replacement for the
+main benchmark, but it makes the ``when should we use Spin instead of Docker?'' question easier
+to explain.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners=2pt, minimum width=3.5cm, minimum height=1.0cm, align=center, fill=gray!8},
+  core/.style={draw, rounded corners=2pt, minimum width=5.4cm, minimum height=1.15cm, align=center, fill=blue!8},
+  arrow/.style={->, thick}
+]
+\node[core] (contract) at (0,0) {Shared file-tools routes\\JSON, CSV, image metadata, grayscale, resize};
+\node[box] (spinft) at (-4.2,-2) {Spin SDK 4 component\\\texttt{wasm32-wasip2}};
+\node[box] (dockerft) at (4.2,-2) {Docker service\\native Rust + Axum};
+\node[box] (benchft) at (0,-4) {Benchmark CSVs\\\texttt{bench-results}};
+\draw[arrow] (contract) -- (spinft);
+\draw[arrow] (contract) -- (dockerft);
+\draw[arrow] (benchft) -- (spinft);
+\draw[arrow] (benchft) -- (dockerft);
+\end{tikzpicture}
+\caption{File-tools architecture: same request classes, two runtime implementations.}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{File-tools selected results at concurrency 50.}
+\begin{tabular}{lrrrr}
+\toprule
+Scenario & Docker req/s & Spin req/s & Faster runtime & Spin/Docker \\
+\midrule
+\texttt{/health} & 1992.8 & 3141.1 & Spin & 1.58x \\
+\texttt{/validate/json} & 2309.3 & 3112.4 & Spin & 1.35x \\
+\texttt{/convert/json-to-csv} & 2509.9 & 2917.2 & Spin & 1.16x \\
+\texttt{/image/metadata} & 1481.7 & 590.8 & Docker & 0.40x \\
+\texttt{/image/grayscale} & 1013.8 & 239.0 & Docker & 0.24x \\
+\texttt{/image/resize} & 594.1 & 83.7 & Docker & 0.14x \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The result matches the recommendation we draw from movie-search. Spin is attractive for
+small, isolated handlers with limited native dependencies. Docker is stronger when the workload
+leans on native libraries, CPU-heavy image processing, or mature operational packaging. The
+file-tools cold-start sample also favored Docker in total median start time, 296 ms vs 559 ms
+for Spin, but that sample is smaller than the main movie-search benchmark and is used as
+supporting evidence.
+
 \section{Demo}
 
 The presentation demo does not run the full benchmark live. Measurements are collected
@@ -265,12 +324,14 @@ beforehand; during the presentation we show a reproducible path:
   \item run an enhanced search with genre/year filters, typo tolerance, highlights, and facets;
   \item call \texttt{/suggest} for title autocomplete;
   \item run \texttt{benchmarks/compare\_results.sh};
+  \item run one or two \texttt{file-tools} requests for JSON validation and image metadata/resize;
   \item show the final charts and CSV files.
 \end{enumerate}
 
 If the live environment fails, the fallback plan is to show saved artifacts:
-\path{results/raw}, \path{results/processed}, and \path{results/plots}. The full scenario is
-in \path{demo/demo-script.md}.
+\path{results/raw}, \path{results/processed}, \path{results/plots}, and
+\path{bench-results/combined-summary.csv}. The full scenario is in
+\path{demo/demo-script.md}.
 
 \section{Reproducibility and limitations}
 
@@ -312,7 +373,10 @@ favored OCI, while the \texttt{space} and enhanced paths showed higher Spin thro
 The \texttt{space} scenario saturated both systems at concurrency 200, producing client-side
 timeouts, so high-concurrency tail results should be treated cautiously. The enhanced feature path
 gives a more realistic demo surface and is now part of the benchmark harness, but it remains fair
-because the implementation lives in the shared core. The Meilisearch attempt remains a valuable appendix: a storage-heavy system built on LMDB
+because the implementation lives in the shared core. The file-tools workload reinforces the
+recommendation: use Spin for small isolated request handlers and validate Docker/OCI first when
+native image-processing or storage-heavy behavior dominates. The Meilisearch attempt remains a
+valuable appendix: a storage-heavy system built on LMDB
 and mmap is not a good candidate for a simple WASI port without substantial architectural changes.
 
 \begin{thebibliography}{9}

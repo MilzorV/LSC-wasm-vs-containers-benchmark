@@ -426,7 +426,7 @@ benchmarks/compare_results.sh
         \begin{itemize}
           \item \texttt{docker-file-tools}
           \item Native Rust server with Axum
-          \item Default port: \texttt{8081}
+          \item Container port: \texttt{8081}
           \item Built as a Docker image
         \end{itemize}
       \end{alertblock}
@@ -443,6 +443,32 @@ benchmarks/compare_results.sh
     \texttt{/image/grayscale} \quad
     \texttt{/image/resize}
   \end{center}
+\end{frame}
+
+\begin{frame}{File-tools: structure}
+  \begin{center}
+  \begin{tikzpicture}[
+    box/.style={draw, rounded corners=2pt, align=center, inner sep=6pt, minimum height=0.85cm},
+    arrow/.style={->, thick, DeckGray}
+  ]
+    \node[box, fill=DeckTeal!10, draw=DeckTeal, minimum width=5.9cm] (contract) at (0,1.45) {\textbf{Shared workload contract}\\JSON validation, CSV conversion, image metadata, grayscale, resize};
+    \node[box, fill=DeckBlue!9, draw=DeckBlue, minimum width=3.9cm] (spinft) at (-4.0,-0.25) {\textbf{spin-file-tools-sdk4}\\Spin SDK 4 component\\\texttt{wasm32-wasip2}};
+    \node[box, fill=DeckGreen!9, draw=DeckGreen, minimum width=3.9cm] (dockerft) at (4.0,-0.25) {\textbf{docker-file-tools}\\native Rust + Axum\\Docker image};
+    \node[box, fill=DeckAmber!10, draw=DeckAmber, minimum width=5.8cm] (benchft) at (0,-1.95) {\textbf{File-tools benchmark}\\\texttt{bench-results/combined-summary.csv}\\cold-start CSVs};
+
+    \draw[arrow] (contract) -- (spinft);
+    \draw[arrow] (contract) -- (dockerft);
+    \draw[arrow] (benchft) -- (spinft);
+    \draw[arrow] (benchft) -- (dockerft);
+  \end{tikzpicture}
+  \end{center}
+
+  \vspace{-1mm}
+  \metric{1 API shape}{same request classes}{not a toy hello-world}
+  \hfill
+  \metric{2 runtimes}{Spin SDK 4 and Docker}{same endpoints}
+  \hfill
+  \metric{2 workload types}{light JSON vs image-heavy}{different winners}
 \end{frame}
 
 \begin{frame}{File-tools: light request paths at concurrency 50}

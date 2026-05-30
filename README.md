@@ -203,7 +203,8 @@ Outputs:
 - summary CSVs and `dashboard.json`: `results/processed/`;
 - plots: `results/plots/`;
 - LaTeX report source/PDF: `report/final-report.tex`, `report/final-report.pdf`;
-- presentation: `presentation/movie-search-spin-vs-oci.pptx`, `presentation/movie-search-spin-vs-oci.pdf`;
+- LaTeX presentation source/PDF: `presentation/main.tex`, `presentation/main.pdf`;
+- speaker plan: `presentation/speaker-plan.md`;
 - demo script: `demo/demo-script.md`.
 
 Individual runners are also available:
