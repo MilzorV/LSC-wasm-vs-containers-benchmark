@@ -30,7 +30,7 @@
 \title{\textbf{Movie Search on Spin/WASM and OCI}\\
 \large Comparing WebAssembly as isolation for microservices}
 \author{LSC Project}
-\date{24 May 2026}
+\date{30 May 2026}
 
 \begin{document}
 \maketitle
@@ -45,8 +45,9 @@ deterministic \texttt{movie-search} service in which Spin and OCI share the same
 code, fixture, and API semantics. The service now includes opt-in Meilisearch-inspired
 features such as filters, facets, sorting, highlighting, suggestions, and lightweight typo
 tolerance while preserving the original benchmark payloads. Results show full functional
-parity, a shorter first search request on Spin, very fast OCI responses for a simple empty
-query, and a clearly larger observed Spin process RSS under load. We conclude that Spin/WASM is a reasonable
+parity, a shorter cold path to first search on Spin in the final local run, very fast OCI
+responses for a simple empty query, higher Spin throughput on the search-like and enhanced
+paths, and a clearly larger observed Spin process RSS under load. We conclude that Spin/WASM is a reasonable
 candidate for isolated, short-lived HTTP microservices, but OCI containers remain a more
 mature and predictable operational choice, especially for storage-heavy services.
 \end{abstract}
@@ -140,12 +141,13 @@ one enhanced payload with filters, facets, highlighting, typo tolerance, and sug
 The full benchmark was run with \texttt{benchmarks/run\_all.sh}. It includes 20 cold-start
 repetitions, load tests on \texttt{POST /search} for queries \texttt{space}, empty, and
 \texttt{enhanced} at concurrency 10, 50, 100, and 200, and memory samples in idle and
-under-load states. The historical tables in this report show the legacy \texttt{space} and
-empty scenarios; the current harness now records the enhanced scenario as a separate CSV
-label so it can be analyzed without overwriting earlier results.
+under-load states. The load tables show the legacy \texttt{space} and empty scenarios plus
+the enhanced Meilisearch-inspired payload as a separate CSV label, so feature-demo overhead
+can be analyzed without overwriting the original benchmark scenarios.
 Environment: Apple M4, 10 cores, 24 GiB RAM, macOS 15.6, Spin 3.6.3, Docker 28.5.1, Rust
-1.95.0. The Docker image was built before the cold-start measurement; build time is not part
-of the result.
+1.95.0. The Spin component and Docker image are built before benchmark phases. Cold-start
+measurement recreates service instances from those existing artifacts; build time is not part
+of the final cold-start run.
 
 An important limitation concerns memory. OCI is measured via \texttt{docker stats} and reflects
 the container's perspective. Spin is measured as host process-tree RSS. These numbers are useful
@@ -153,8 +155,10 @@ for comparing observed overhead but are not an identical memory accounting layer
 
 \section{Results}
 
-All functional and load tests completed without response validation errors. The parity check
-confirmed identical functional results for both runtimes.
+All functional tests completed without response validation errors. The parity check confirmed
+identical functional results for both runtimes. During the high-concurrency \texttt{space}
+load test, both systems hit client-side timeouts at concurrency 200: 40 for Spin and 58 for
+OCI. Successful responses still passed validation.
 
 \begin{table}[H]
 \centering
@@ -163,10 +167,10 @@ confirmed identical functional results for both runtimes.
 \toprule
 System & Metric & Median [ms] & p95 [ms] & p99 [ms] & Errors \\
 \midrule
-OCI & \texttt{/health} & 20.982 & 28.420 & 36.325 & 0 \\
-OCI & \texttt{/health + /search} & 307.755 & 376.983 & 446.288 & 0 \\
-Spin & \texttt{/health} & 141.357 & 144.220 & 152.354 & 0 \\
-Spin & \texttt{/health + /search} & 205.649 & 217.504 & 218.947 & 0 \\
+OCI & \texttt{/health} & 21.102 & 38.700 & 59.256 & 0 \\
+OCI & \texttt{/health + /search} & 431.771 & 854.839 & 1126.991 & 0 \\
+Spin & \texttt{/health} & 145.608 & 202.689 & 419.120 & 0 \\
+Spin & \texttt{/health + /search} & 370.009 & 446.347 & 754.614 & 0 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -178,9 +182,10 @@ Spin & \texttt{/health + /search} & 205.649 & 217.504 & 218.947 & 0 \\
 \end{figure}
 
 In this environment, the container reached \texttt{/health} readiness faster, while Spin
-completed the cold start plus first search sequence faster. This should be interpreted as a
-property of the specific implementation and measurement approach: \texttt{/health} is a cheap
-readiness endpoint, whereas \texttt{/search} exercises the application's real work path.
+completed the recreated-service path through the first search faster. This should be
+interpreted as a property of the specific implementation and measurement approach:
+\texttt{/health} is a cheap readiness endpoint, whereas \texttt{/search} exercises the
+application's real work path.
 
 \begin{table}[H]
 \centering
@@ -192,10 +197,12 @@ System & Query & \multicolumn{2}{c}{c=10} & \multicolumn{2}{c}{c=50} &
 \multicolumn{2}{c}{c=100} & \multicolumn{2}{c}{c=200} \\
  & & req/s & p95 ms & req/s & p95 ms & req/s & p95 ms & req/s & p95 ms \\
 \midrule
-OCI & empty & 3314.9 & 5.4 & 2931.1 & 26.8 & 2934.6 & 52.3 & 2899.0 & 95.7 \\
-Spin & empty & 132.8 & 100.0 & 129.1 & 643.5 & 123.0 & 1516.1 & 123.3 & 3636.0 \\
-OCI & space & 54.0 & 210.8 & 46.2 & 2164.9 & 58.0 & 1899.6 & 61.5 & 3747.5 \\
-Spin & space & 77.2 & 168.3 & 70.3 & 1264.6 & 74.5 & 2491.2 & 78.3 & 6073.3 \\
+OCI & empty & 2224.6 & 8.6 & 2133.0 & 37.5 & 2093.0 & 72.9 & 2121.2 & 142.1 \\
+Spin & empty & 84.5 & 237.3 & 108.9 & 766.8 & 97.0 & 2210.9 & 98.9 & 5219.4 \\
+OCI & enhanced & 38.7 & 316.0 & 40.1 & 1496.9 & 41.1 & 3386.9 & 44.6 & 5704.8 \\
+Spin & enhanced & 50.8 & 280.1 & 47.1 & 1944.4 & 46.5 & 4469.4 & 52.6 & 10050.5 \\
+OCI & space & 6.0 & 2442.9 & 7.4 & 9770.7 & 9.5 & 17538.4 & 12.7 & 29738.2 \\
+Spin & space & 16.8 & 1097.7 & 17.4 & 6312.6 & 20.9 & 10232.0 & 22.4 & 24071.5 \\
 \bottomrule
 \end{tabular}
 }
@@ -210,8 +217,10 @@ Spin & space & 77.2 & 168.3 & 70.3 & 1264.6 & 74.5 & 2491.2 & 78.3 & 6073.3 \\
 
 For the empty query, the native OCI server was decisively faster. This is a low application-cost
 path: it returns the first documents deterministically without expensive text filtering. For the
-\texttt{space} query, the picture is more nuanced. Spin achieved higher throughput but worse
-latency tails at very high concurrency. This suggests the benchmark measures not only isolation
+\texttt{space} and \texttt{enhanced} queries, Spin achieved higher throughput in this run, and
+\texttt{space} also had lower p95 latency than OCI at every measured concurrency. At concurrency
+200, both systems reached the 30 second client timeout for some \texttt{space} requests, so that
+point should be read as a saturation signal. Overall, the benchmark measures not only isolation
 but also the interaction of simple linear scanning over 44\,471 records with each runtime's HTTP
 model and scheduling.
 
@@ -222,10 +231,10 @@ model and scheduling.
 \toprule
 System & Phase & Source & Max [MiB] \\
 \midrule
-OCI & idle & \texttt{docker stats} & 29.8 \\
-OCI & load & \texttt{docker stats} & 31.9 \\
-Spin & idle & host process RSS & 104.8 \\
-Spin & load & host process RSS & 493.5 \\
+OCI & idle & \texttt{docker stats} & 34.6 \\
+OCI & load & \texttt{docker stats} & 37.4 \\
+Spin & idle & host process RSS & 114.6 \\
+Spin & load & host process RSS & 553.1 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -297,12 +306,13 @@ sandboxing, and a simple capability-oriented model matter. OCI containers remain
 operationally: they have widespread tooling, stable resource accounting, a familiar deployment
 model, and very good performance for simple native paths.
 
-In our benchmark, OCI had faster \texttt{/health} readiness, Spin had a faster first search
-request after startup, and load results depended strongly on the query. The empty query clearly
-favored OCI, while the \texttt{space} query showed higher Spin throughput with worse latency tails
-at high concurrency. The enhanced feature path gives a more realistic demo surface and is now
-part of the benchmark harness, but it remains fair because the implementation lives in the shared
-core. The Meilisearch attempt remains a valuable appendix: a storage-heavy system built on LMDB
+In our benchmark, OCI had faster \texttt{/health} readiness, Spin had a faster cold path through
+the first search request, and load results depended strongly on the query. The empty query clearly
+favored OCI, while the \texttt{space} and enhanced paths showed higher Spin throughput in this run.
+The \texttt{space} scenario saturated both systems at concurrency 200, producing client-side
+timeouts, so high-concurrency tail results should be treated cautiously. The enhanced feature path
+gives a more realistic demo surface and is now part of the benchmark harness, but it remains fair
+because the implementation lives in the shared core. The Meilisearch attempt remains a valuable appendix: a storage-heavy system built on LMDB
 and mmap is not a good candidate for a simple WASI port without substantial architectural changes.
 
 \begin{thebibliography}{9}

@@ -373,35 +373,35 @@ function paritySlide(slide, ctx) {
 
 async function coldSlide(slide, ctx) {
   await chart(slide, ctx, "cold_start_p95.png", 705, 166, 440, 300);
-  metric(slide, ctx, 92, 168, "28.4 ms", "OCI p95 /health", C.green, 245);
-  metric(slide, ctx, 370, 168, "144.2 ms", "Spin p95 /health", C.teal, 245);
-  metric(slide, ctx, 92, 332, "377.0 ms", "OCI p95 first search", C.amber, 245);
-  metric(slide, ctx, 370, 332, "217.5 ms", "Spin p95 first search", C.blue, 245);
+  metric(slide, ctx, 92, 168, "38.7 ms", "OCI p95 /health", C.green, 245);
+  metric(slide, ctx, 370, 168, "202.7 ms", "Spin p95 /health", C.teal, 245);
+  metric(slide, ctx, 92, 332, "854.8 ms", "OCI p95 first search", C.amber, 245);
+  metric(slide, ctx, 370, 332, "446.3 ms", "Spin p95 first search", C.blue, 245);
   ctx.addText(slide, { text: "Interpretation: /health measures process readiness; first /search measures the real application path.", x: 110, y: 525, w: 1020, h: 42, fontSize: 20, color: C.muted, align: "center" });
 }
 
 async function loadSpaceSlide(slide, ctx) {
   await chart(slide, ctx, "load_latency_p95.png", 674, 148, 470, 345);
-  metric(slide, ctx, 82, 168, "77.2 req/s", "Spin c=10", C.teal, 250);
-  metric(slide, ctx, 372, 168, "54.0 req/s", "OCI c=10", C.green, 250);
-  metric(slide, ctx, 82, 332, "168 ms", "Spin p95 c=10", C.blue, 250);
-  metric(slide, ctx, 372, 332, "211 ms", "OCI p95 c=10", C.amber, 250);
-  callout(slide, ctx, "For space, both variants perform expensive linear text scanning; at high concurrency, tail latency grows.", 100, 540, 1000, 58, C.teal);
+  metric(slide, ctx, 82, 168, "16.8 req/s", "Spin c=10", C.teal, 250);
+  metric(slide, ctx, 372, 168, "6.0 req/s", "OCI c=10", C.green, 250);
+  metric(slide, ctx, 82, 332, "1098 ms", "Spin p95 c=10", C.blue, 250);
+  metric(slide, ctx, 372, 332, "2443 ms", "OCI p95 c=10", C.amber, 250);
+  callout(slide, ctx, "For space, both variants perform expensive linear text scanning; at c=200 both hit client-side timeouts.", 100, 540, 1000, 58, C.teal);
 }
 
 async function loadEmptySlide(slide, ctx) {
   await chart(slide, ctx, "load_throughput.png", 650, 145, 500, 350);
-  metric(slide, ctx, 78, 168, "3315 req/s", "OCI c=10", C.green, 260);
-  metric(slide, ctx, 378, 168, "133 req/s", "Spin c=10", C.teal, 260);
-  metric(slide, ctx, 78, 332, "95.7 ms", "OCI p95 c=200", C.blue, 260);
-  metric(slide, ctx, 378, 332, "3636 ms", "Spin p95 c=200", C.red, 260);
+  metric(slide, ctx, 78, 168, "2225 req/s", "OCI c=10", C.green, 260);
+  metric(slide, ctx, 378, 168, "84 req/s", "Spin c=10", C.teal, 260);
+  metric(slide, ctx, 78, 332, "142 ms", "OCI p95 c=200", C.blue, 260);
+  metric(slide, ctx, 378, 332, "5219 ms", "Spin p95 c=200", C.red, 260);
   callout(slide, ctx, "The empty query is application-light, so it exposes HTTP/runtime overhead strongly.", 100, 540, 1000, 58, C.amber);
 }
 
 async function memorySlide(slide, ctx) {
   await chart(slide, ctx, "memory_peak.png", 704, 158, 430, 316);
-  metric(slide, ctx, 92, 168, "31.9 MiB", "OCI load max", C.green, 245);
-  metric(slide, ctx, 370, 168, "493.5 MiB", "Spin load max RSS", C.red, 245);
+  metric(slide, ctx, 92, 168, "37.4 MiB", "OCI load max", C.green, 245);
+  metric(slide, ctx, 370, 168, "553.1 MiB", "Spin load max RSS", C.red, 245);
   bulletList(slide, ctx, 115, 360, [
     "OCI: docker stats / cgroup view",
     "Spin: host process tree RSS",

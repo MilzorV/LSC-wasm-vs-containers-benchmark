@@ -344,16 +344,16 @@ benchmarks/compare_results.sh
           \toprule
           Runtime & Path & Median & p95 \\
           \midrule
-          OCI & \texttt{/health} & 21.0 ms & 28.4 ms \\
-          Spin & \texttt{/health} & 141.4 ms & 144.2 ms \\
-          OCI & first search & 307.8 ms & 377.0 ms \\
-          Spin & first search & 205.6 ms & 217.5 ms \\
+          OCI & \texttt{/health} & 21.1 ms & 38.7 ms \\
+          Spin & \texttt{/health} & 145.6 ms & 202.7 ms \\
+          OCI & first search & 431.8 ms & 854.8 ms \\
+          Spin & first search & 370.0 ms & 446.3 ms \\
           \bottomrule
         \end{tabular}
       \end{table}
 
       \begin{block}{Interpretation}
-        OCI reached a cheap readiness endpoint faster. Spin completed the cold path through a real search request faster in this implementation.
+        OCI reached a cheap readiness endpoint faster. Spin completed the recreated-service path through a real search request faster in this run.
       \end{block}
     \end{column}
     \begin{column}{0.5\linewidth}
@@ -362,21 +362,22 @@ benchmarks/compare_results.sh
   \end{columns}
 \end{frame}
 
-\begin{frame}{Movie-search: throughput and tail latency}
+\begin{frame}[shrink=5]{Movie-search: throughput and tail latency}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.5\linewidth}
-      \includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]{load_throughput.png}
+      \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{load_throughput.png}
     \end{column}
     \begin{column}{0.5\linewidth}
-      \includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]{load_latency_p95.png}
+      \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{load_latency_p95.png}
     \end{column}
   \end{columns}
 
-  \vspace{1mm}
-  \small
+  \vspace{0.5mm}
+  \scriptsize
   \begin{tabularx}{\linewidth}{>{\bfseries}lX}
-    Empty query & OCI was much faster on the low-application-cost path: 3315 req/s vs 133 req/s at concurrency 10. \\
-    \texttt{space} query & Spin had higher c=10 throughput, 77 req/s vs 54 req/s, but worse tails at high concurrency. \\
+    Empty query & OCI was much faster on the low-application-cost path: 2225 req/s vs 84 req/s at concurrency 10. \\
+    \texttt{space} query & Spin had higher c=10 throughput, 16.8 req/s vs 6.0 req/s, with both runtimes timing out at c=200. \\
+    Enhanced query & Spin led c=10 throughput, 50.8 req/s vs 38.7 req/s; tails grew quickly under high concurrency. \\
   \end{tabularx}
 \end{frame}
 
@@ -390,10 +391,10 @@ benchmarks/compare_results.sh
           \toprule
           Runtime & Phase & Max observed \\
           \midrule
-          OCI & idle & 29.8 MiB \\
-          OCI & load & 31.9 MiB \\
-          Spin & idle & 104.8 MiB \\
-          Spin & load & 493.5 MiB \\
+          OCI & idle & 34.6 MiB \\
+          OCI & load & 37.4 MiB \\
+          Spin & idle & 114.6 MiB \\
+          Spin & load & 553.1 MiB \\
           \bottomrule
         \end{tabular}
       \end{table}
@@ -670,7 +671,7 @@ curl -X POST /image/resize
         \item The demo now includes search-product features, but they live in the same shared core.
         \item Wasm is practical for some serverless-style microservices, especially small isolated request handlers.
         \item OCI remains the safer default for native, storage-heavy, and operations-heavy services.
-        \item ``Wasm is lighter than containers'' is too simple: workload shape changed the result.
+        \item ``Wasm is lighter than containers'' is too simple: workload shape and measurement viewpoint changed the result.
       \end{itemize}
     \end{column}
     \begin{column}{0.38\linewidth}

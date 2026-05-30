@@ -7,10 +7,12 @@ __pycache__/
 *.fls
 *.log
 *.out
+*.toc
 target/
 spin-meili/target/
 spin-meili/.spin/
 outputs/
+submission/
 meili_data/
 vendor/meilisearch/
 docs/upstream-native-check.log

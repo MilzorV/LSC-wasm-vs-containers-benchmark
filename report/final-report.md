@@ -25,8 +25,9 @@ lightweight typo tolerance. Legacy benchmark payloads still work unchanged.
 ## Final artifacts
 
 - Report: `report/final-report.pdf`.
-- Editable presentation: `presentation/movie-search-spin-vs-oci.pptx`.
-- Presentation PDF: `presentation/movie-search-spin-vs-oci.pdf`.
+- LaTeX presentation: `presentation/main.pdf`.
+- Legacy editable PowerPoint: `presentation/movie-search-spin-vs-oci.pptx`.
+- Legacy PowerPoint PDF: `presentation/movie-search-spin-vs-oci.pdf`.
 - Demo: `demo/demo-script.md`.
 - Raw results: `results/raw/`.
 - Processed results: `results/processed/`.
@@ -38,11 +39,14 @@ lightweight typo tolerance. Legacy benchmark payloads still work unchanged.
   `dark knight`, `romance`, and the empty query.
 - Enhanced parity: both runtimes match for a filtered/faceted/highlighted typo-tolerant search
   payload and for `/suggest`.
-- Cold start `/health` p95: OCI `28.420 ms`, Spin `144.220 ms`.
-- Cold start + first `/search` p95: OCI `376.983 ms`, Spin `217.504 ms`.
-- Empty query, concurrency 10: OCI `3314.9 req/s`, Spin `132.8 req/s`.
-- Query `space`, concurrency 10: OCI `54.0 req/s`, Spin `77.2 req/s`.
-- Memory load max: OCI `31.9 MiB` via `docker stats`, Spin `493.5 MiB` as host process RSS.
+- Cold start `/health` p95: OCI `38.700 ms`, Spin `202.689 ms`.
+- Cold path through first `/search` p95: OCI `854.839 ms`, Spin `446.347 ms`.
+- Empty query, concurrency 10: OCI `2224.6 req/s`, Spin `84.5 req/s`.
+- Query `space`, concurrency 10: OCI `6.0 req/s`, Spin `16.8 req/s`.
+- Enhanced query, concurrency 10: OCI `38.7 req/s`, Spin `50.8 req/s`.
+- Load caveat: at `space`/c=200 there were client-side timeouts on both systems
+  (`58` OCI, `40` Spin), while successful responses still validated.
+- Memory load max: OCI `37.4 MiB` via `docker stats`, Spin `553.1 MiB` as host process RSS.
 
 ## Reproduction
 
