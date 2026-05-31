@@ -1,21 +1,25 @@
-# Draft Speaker Plan
+# Speaker plan (index)
 
-Target length: 12-15 minutes plus questions. The split below is a practical two-person
-draft for Miłosz Słowiński and Damian Staroń.
+Two-person presentation. Full **English** speaker notes with beginner-friendly explanations are in separate files.
 
-| Segment | Slides | Time | Speaker | What to say |
-|---|---:|---:|---|---|
-| Opening and assignment | 1-2 | 1.5 min | Miłosz | State the project question: can Spin/wasmtime be a practical serverless isolation substrate compared with OCI containers? |
-| Background | 3-4 | 2 min | Miłosz | Explain WebAssembly, WASI, wasmtime, Spin, OCI, and Docker at a high level. Keep it conceptual, not implementation-heavy. |
-| Movie-search architecture and features | 5-7 | 2 min | Miłosz | Emphasize fairness: one Rust core, two adapters, same fixture, same API. Explain enhanced search as demo value, not as a benchmark shortcut. |
-| Methodology and parity | 8-9 | 1.5 min | Damian | Say that parity comes before performance. Mention smoke checks, same hit IDs, enhanced query parity, and `/suggest`. |
-| Movie-search results | 10-12 | 3 min | Damian | Explain cold start, throughput, tail latency, and memory. Call out that OCI-empty dominates the throughput chart because it is a low-application-cost path. Mention c=200 timeouts as saturation evidence. |
-| File-tools workload | 13-16 | 2.5 min | Damian | Explain why this second workload helps intuition: light JSON paths favor Spin, image-heavy paths favor Docker. Point to the structure diagram before results. |
-| Recommendations and demo | 17-20/21 | 2 min | Miłosz + Damian | Summarize when to use Spin vs OCI, then run the short demo or show saved artifacts if services are not ready. |
+| Speaker | Slides | File | Target time |
+|---------|--------|------|-------------|
+| **Miłosz** | 1–12 | [speaker-notes-milosz.md](speaker-notes-milosz.md) ([PDF](speaker-notes-milosz.pdf)) | 7–8 min |
+| **Damian** | 13–21 | [speaker-notes-damian.md](speaker-notes-damian.md) ([PDF](speaker-notes-damian.pdf)) | 5–7 min |
 
-Demo rule: do not run the full benchmark live. Show health/version/stats, one normal search,
-one enhanced search, `/suggest`, one file-tools JSON route, one file-tools image route, and
-then open saved plots/CSV summaries.
+**Deck source:** [main.tex](main.tex)
 
-Backup line: "The full benchmark has already been run; the live demo proves functionality and
-parity, while the report and plots show the measured results."
+## Handover (Miłosz to Damian, after slide 12)
+
+> That closes the **movie-search** workload. Damian will walk through **file-tools**, then recommendations, demo, and final conclusions.
+
+## Shared demo rule
+
+Do not run the full benchmark live. Show health, one search, one enhanced search, `/suggest`, one file-tools JSON route, one image route, then saved plots/CSVs.
+
+**Backup line:** “The full benchmark has already been run; the live demo proves functionality and parity, while the report and plots show the measured results.”
+
+## Rehearsal
+
+- **Miłosz:** finish slide 12 + handover before 8:00; shorten slides 3 and 9 if needed.
+- **Damian:** emphasize slides 15–16 contrast (light JSON vs image-heavy).
